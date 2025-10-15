@@ -16,6 +16,8 @@
   const globalSearch = document.getElementById('global-search');
   const quickAdd = document.getElementById('btn-quick-add');
   const remindersBtn = document.getElementById('btn-reminders');
+  const AGENDA_STORAGE_KEY = 'iwf_crm_v9_agenda';
+  let lastDashboardSnapshot = null;
 
   const VIEW_META = {
     dashboard: {
@@ -154,37 +156,52 @@
 
   function renderDashboard() {
     const data = dashboardInsights();
+    lastDashboardSnapshot = data;
 
-    const stats = data.kpis.map((kpi) => `
-      <div class="stat-card">
-        <span>${kpi.label}</span>
-        <strong>${kpi.value}</strong>
-        <small class="muted">${kpi.delta}</small>
-      </div>
-    `).join('');
-
-    const pipeline = data.pipeline.map((stage) => `
-      <div class="glass-card">
-        <div class="flex-between" style="align-items:flex-start;">
-          <div>
-            <h4 style="margin:0;color:#1d2033;">${stage.name}</h4>
-            <p style="margin:6px 0 0;" class="muted">${stage.subtitle}</p>
-          </div>
-          <span class="badge">${stage.count} cand.</span>
+    const stats = (data.kpis || []).map((kpi) => {
+      const deltaClass = kpi.delta.trim().startsWith('-')
+        ? 'negative'
+        : kpi.delta.trim().startsWith('+')
+          ? 'positive'
+          : 'neutral';
+      return `
+        <div class="stat-card">
+          <span class="stat-label">${kpi.label}</span>
+          <strong>${kpi.value}</strong>
+          <small class="stat-delta ${deltaClass}">${kpi.delta}</small>
         </div>
-        <div class="progress-line" style="margin-top:14px;"><span style="width:${stage.progress}%"></span></div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
-    const timeline = data.timeline.map((item) => `
-      <div class="timeline-item">
-        <strong>${item.time}</strong>
-        <div>${item.title}</div>
-        <div class="muted" style="font-size:12px;">${item.context}</div>
-      </div>
-    `).join('');
+    const summary = (data.weeklySnapshot || []).map((item) => {
+      const accent = item.accent ? ` summary-icon--${item.accent}` : '';
+      const icon = item.icon ? `<div class="summary-icon${accent}"><i data-lucide="${item.icon}"></i></div>` : '';
+      return `
+        <div class="summary-metric">
+          ${icon || '<div class="summary-icon"></div>'}
+          <div class="summary-body">
+            <span class="summary-label">${item.label}</span>
+            <strong class="summary-value">${item.value}</strong>
+            ${item.context ? `<span class="summary-context">${item.context}</span>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
 
-    const alerts = data.alerts.map((alert) => `
+    const pipeline = (data.pipelineStages || []).map((stage) => {
+      const accent = stage.accent ? ` pipeline-card--${stage.accent}` : '';
+      return `
+        <div class="pipeline-card${accent}">
+          <div class="pipeline-header">
+            <span class="pipeline-chip">${stage.label}</span>
+            <span class="pipeline-total">${stage.count}</span>
+          </div>
+          <p class="pipeline-description">${stage.description}</p>
+        </div>
+      `;
+    }).join('');
+
+    const alerts = (data.alerts || []).map((alert) => `
       <div class="glass-card" style="display:flex;align-items:flex-start;gap:12px;">
         <span class="badge ${alert.type}"><i data-lucide="zap"></i>${alert.typeLabel}</span>
         <div>
@@ -194,7 +211,7 @@
       </div>
     `).join('');
 
-    const missions = data.missions.map((mission) => `
+    const missions = (data.missions || []).map((mission) => `
       <div class="glass-card" style="display:flex;flex-direction:column;gap:12px;">
         <div class="flex-between">
           <strong>${mission.title}</strong>
@@ -209,45 +226,67 @@
       </div>
     `).join('');
 
-    const highlights = data.highlights.map((item) => `
+    const highlights = (data.highlights || []).map((item) => `
       <div>
         <strong>${item.title}</strong>
         <p class="muted" style="margin:6px 0 0;">${item.detail}</p>
       </div>
     `).join('');
 
+    const trendClass = (data.weeklyTrend || '').trim().startsWith('-') ? 'negative' : 'positive';
+
     return `
-      <div class="card" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px,1fr));gap:22px;align-items:center;">
-        <div>
-          <h2 style="margin-bottom:8px;">Bun venit în cockpit-ul de recrutare 2030</h2>
-          <p class="muted" style="margin:0;">Monitorizează candidații, clienții și cererile interne într-un singur panou augmentat de AI.</p>
+      <div class="card hero-card">
+        <div class="hero-intro">
+          <h2>Bun venit în cockpit-ul de recrutare 2030</h2>
+          <p class="muted">Monitorizează candidații, clienții și cererile interne într-un singur panou augmentat de AI.</p>
           <div class="chip-set">
             <span class="chip active">Flux LIVE</span>
             <span class="chip">Hărți talent</span>
             <span class="chip">Indicatori AI</span>
           </div>
         </div>
-        <div class="glass-card" style="text-align:center;">
-          <p class="muted" style="margin:0;">Angajări săptămâna aceasta</p>
-          <h1 style="font-size:42px;margin:10px 0 0;color:#1d2033;">${data.weeklyHires}</h1>
-          <p class="muted" style="margin:6px 0 0;font-size:13px;">${data.weeklyTrend}</p>
+        <div class="glass-card summary-panel">
+          <div class="summary-header">
+            <p class="muted">Angajări săptămâna aceasta</p>
+            <div class="summary-highlight">
+              <span class="summary-number">${data.weeklyHires}</span>
+              <span class="summary-trend ${trendClass}">${data.weeklyTrend}</span>
+            </div>
+          </div>
+          <div class="summary-grid">${summary}</div>
         </div>
       </div>
 
       <div class="stats-grid">${stats}</div>
 
-      <div class="card" style="display:grid;grid-template-columns:2fr 1fr;gap:24px;">
+      <div class="card dashboard-duo">
         <div>
           <h3 style="margin-top:0;">Pipeline candidați</h3>
-          <div class="grid-two">${pipeline}</div>
+          <p class="muted small">Monitorizează fiecare etapă și prioritizează acțiunile urgente.</p>
+          <div class="pipeline-grid">${pipeline}</div>
         </div>
-        <div>
+        <div class="agenda-panel">
           <h3 style="margin-top:0;">Agenda inteligentă</h3>
-          <div class="timeline">${timeline}</div>
+          <p class="muted small">Setează-ți reminder-ele și urmărește activitățile personale.</p>
+          <form id="agenda-form" class="agenda-form">
+            <input type="text" id="agenda-title" class="input" placeholder="Ex: Urmărire ofertă Stratos" required />
+            <div class="agenda-form-row">
+              <input type="date" id="agenda-date" class="input" required />
+              <input type="time" id="agenda-time" class="input" required />
+            </div>
+            <textarea id="agenda-note" class="input agenda-note" rows="2" placeholder="Detalii (opțional)"></textarea>
+            <button type="submit" class="btn small">Adaugă task</button>
+          </form>
+          <div class="agenda-list" data-agenda-list></div>
+          <div class="agenda-empty" data-agenda-empty>
+            <i data-lucide="check-circle"></i>
+            <span>Nu ai task-uri programate. Adaugă primul reminder!</span>
+          </div>
         </div>
       </div>
 
-      <div class="card" style="display:grid;grid-template-columns:2fr 1fr;gap:24px;">
+      <div class="card dashboard-duo">
         <div>
           <h3 style="margin-top:0;">Misiuni în derulare</h3>
           <div class="grid-two">${missions}</div>
@@ -279,27 +318,233 @@
     `;
   }
 
+  function initDashboardView() {
+    const data = lastDashboardSnapshot || dashboardInsights();
+    setupAgenda(data.timeline || []);
+  }
+
+  function setupAgenda(defaultTasks = []) {
+    const list = document.querySelector('[data-agenda-list]');
+    const emptyState = document.querySelector('[data-agenda-empty]');
+    const form = document.getElementById('agenda-form');
+    const titleInput = document.getElementById('agenda-title');
+    const dateInput = document.getElementById('agenda-date');
+    const timeInput = document.getElementById('agenda-time');
+    const noteInput = document.getElementById('agenda-note');
+
+    if (!list || !form || !titleInput || !dateInput || !timeInput || !noteInput) {
+      return;
+    }
+
+    let tasks = getAgendaTasks(defaultTasks);
+
+    const setDefaultInputs = () => {
+      try {
+        if (!dateInput.value) {
+          dateInput.value = new Date().toISOString().slice(0, 10);
+        }
+        if (!timeInput.value) {
+          const now = new Date();
+          const hours = String(now.getHours()).padStart(2, '0');
+          const minutes = String(now.getMinutes()).padStart(2, '0');
+          timeInput.value = `${hours}:${minutes}`;
+        }
+      } catch (err) {
+        // ignore formatting errors
+      }
+    };
+
+    function renderAgenda() {
+      const sorted = tasks.slice().sort((a, b) => {
+        const aDate = parseAgendaDate(a.date, a.time);
+        const bDate = parseAgendaDate(b.date, b.time);
+        return aDate - bDate;
+      });
+
+      list.innerHTML = renderAgendaItems(sorted);
+      if (emptyState) {
+        emptyState.style.display = sorted.length ? 'none' : 'flex';
+      }
+      lucide.createIcons();
+    }
+
+    setDefaultInputs();
+    renderAgenda();
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const title = titleInput.value.trim();
+      if (!title) return;
+
+      const task = {
+        id: `task-${Date.now()}`,
+        title,
+        date: dateInput.value,
+        time: timeInput.value,
+        details: noteInput.value.trim()
+      };
+
+      tasks.push(task);
+      tasks = saveAgendaTasks(tasks);
+      form.reset();
+      setDefaultInputs();
+      renderAgenda();
+    });
+
+    list.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-agenda-remove]');
+      if (!button) return;
+      const { agendaRemove } = button.dataset;
+      tasks = tasks.filter((task) => task.id !== agendaRemove);
+      tasks = saveAgendaTasks(tasks);
+      renderAgenda();
+    });
+  }
+
+  function getAgendaTasks(defaultTasks = []) {
+    try {
+      const stored = JSON.parse(localStorage.getItem(AGENDA_STORAGE_KEY) || '[]');
+      const normalized = normalizeAgendaTasks(stored);
+      if (normalized.length) {
+        return normalized;
+      }
+    } catch (err) {
+      console.warn('Nu pot încărca agenda:', err);
+    }
+
+    const seeded = normalizeAgendaTasks(defaultTasks);
+    if (seeded.length) {
+      saveAgendaTasks(seeded);
+    }
+    return seeded;
+  }
+
+  function saveAgendaTasks(tasks) {
+    const sanitized = normalizeAgendaTasks(tasks);
+    try {
+      localStorage.setItem(AGENDA_STORAGE_KEY, JSON.stringify(sanitized));
+    } catch (err) {
+      console.warn('Nu pot salva agenda:', err);
+    }
+    return sanitized;
+  }
+
+  function normalizeAgendaTasks(tasks = []) {
+    return tasks
+      .map((task, index) => {
+        if (!task || !task.title) return null;
+        const title = String(task.title).trim();
+        if (!title) return null;
+        return {
+          id: task.id || `seed-${index}`,
+          title,
+          date: task.date || '',
+          time: task.time || '',
+          details: task.details || task.note || task.context || ''
+        };
+      })
+      .filter(Boolean);
+  }
+
+  function renderAgendaItems(tasks = []) {
+    if (!tasks.length) return '';
+    return tasks.map((task) => `
+      <div class="agenda-task" data-agenda-id="${task.id}">
+        <div>
+          <h4>${task.title}</h4>
+          ${task.date || task.time ? `<div class="agenda-meta">${formatAgendaDate(task.date, task.time)}</div>` : ''}
+          ${task.details ? `<div class="agenda-details">${task.details}</div>` : ''}
+        </div>
+        <button type="button" class="agenda-remove" data-agenda-remove="${task.id}">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+    `).join('');
+  }
+
+  function formatAgendaDate(date, time) {
+    if (!date && !time) return '';
+    try {
+      if (!date) {
+        return time;
+      }
+      const composed = time ? `${date}T${time}` : `${date}T09:00`;
+      const dt = new Date(composed);
+      if (Number.isNaN(dt.getTime())) {
+        return `${date}${time ? ` • ${time}` : ''}`;
+      }
+      const formatter = new Intl.DateTimeFormat('ro-RO', { day: '2-digit', month: 'short' });
+      const formattedDate = formatter.format(dt).replace('.', '');
+      return time ? `${formattedDate} • ${time}` : formattedDate;
+    } catch (err) {
+      return `${date}${time ? ` • ${time}` : ''}`;
+    }
+  }
+
+  function parseAgendaDate(date, time) {
+    if (!date && !time) return new Date().getTime();
+    const fallback = new Date().getTime();
+    try {
+      if (!date) {
+        const now = new Date();
+        const [hours = '00', minutes = '00'] = (time || '00:00').split(':');
+        now.setHours(Number(hours), Number(minutes), 0, 0);
+        return now.getTime();
+      }
+      const composed = time ? `${date}T${time}` : `${date}T00:00`;
+      const dt = new Date(composed);
+      return Number.isNaN(dt.getTime()) ? fallback : dt.getTime();
+    } catch (err) {
+      return fallback;
+    }
+  }
+
   function dashboardInsights() {
+    const today = new Date();
+    const formatDate = (offset = 0) => {
+      const dt = new Date(today);
+      dt.setDate(dt.getDate() + offset);
+      return dt.toISOString().slice(0, 10);
+    };
+
+    const totals = {
+      candidatesIntroducedToday: 26,
+      candidatesAddedThisWeek: 18,
+      clientsNewThisWeek: 4,
+      clientsActive: 54,
+      candidatesActive: 128
+    };
+
     return {
       weeklyHires: 12,
       weeklyTrend: '+3 față de săptămâna trecută',
+      totals,
+      weeklySnapshot: [
+        { label: 'Candidați introduși azi', value: `${totals.candidatesIntroducedToday}`, context: 'în ultimele 24h • +8 vs. ieri', icon: 'user-plus', accent: 'magenta' },
+        { label: 'Candidați adăugați', value: `${totals.candidatesAddedThisWeek}`, context: 'în această săptămână • țintă 20', icon: 'user-check', accent: 'teal' },
+        { label: 'Clienți noi', value: `${totals.clientsNewThisWeek}`, context: 'parteneri recent activați • obiectiv 6/săpt.', icon: 'building-2', accent: 'amber' },
+        { label: 'Clienți activi', value: `${totals.clientsActive}`, context: 'cu proiecte în lucru • 14 oferte deschise', icon: 'users', accent: 'indigo' },
+        { label: 'Candidați activi', value: `${totals.candidatesActive}`, context: 'pipeline curent • 31 în interviu', icon: 'target', accent: 'violet' }
+      ],
       kpis: [
-        { label: 'Candidați activi', value: '128', delta: '+12% vs. luna trecută' },
-        { label: 'Clienți cu comenzi', value: '17', delta: '5 în faza de ofertă' },
+        { label: 'Candidați activi', value: `${totals.candidatesActive}`, delta: '+12% vs. luna trecută' },
+        { label: 'Clienți activi', value: `${totals.clientsActive}`, delta: '5 în faza de ofertă' },
         { label: 'Timp mediu de plasare', value: '21 zile', delta: '-4 zile față de Q2' },
         { label: 'Fee estimat (Q3)', value: '€242K', delta: '+€36K pipeline probabil' }
       ],
-      pipeline: [
-        { name: 'Propus', count: 42, subtitle: 'În shortlist pentru clienți', progress: 38 },
-        { name: 'Interviu', count: 31, subtitle: 'Interviuri planificate & live', progress: 62 },
-        { name: 'Ofertă', count: 14, subtitle: 'Pachete salariale în negociere', progress: 78 },
-        { name: 'Angajat', count: 9, subtitle: 'Contracte semnate', progress: 92 }
+      clientsActive: totals.clientsActive,
+      pipelineStages: [
+        { label: 'Propuși', count: 42, description: 'Shortlist trimis către clienți', accent: 'proposed' },
+        { label: 'Interviu', count: 31, description: 'Programări confirmate și live', accent: 'interview' },
+        { label: 'Ofertare', count: 14, description: 'Pachete salariale în negociere', accent: 'offer' },
+        { label: 'Angajați', count: 9, description: 'Contracte semnate & onboarding', accent: 'hired' },
+        { label: 'Respinsi', count: 23, description: 'Feedback transmis candidaților', accent: 'rejected' }
       ],
       timeline: [
-        { time: '08:30', title: 'Stand-up echipă recrutare', context: 'Zoom • Moderator: Larisa' },
-        { time: '11:00', title: 'Interviu final — TechWorks', context: 'Cand.: Ioana Marin • Client: Vlad Popescu' },
-        { time: '14:00', title: 'Ofertă financiară — Green Energy', context: 'Cand.: Mihai Stan • Pending aprobări' },
-        { time: '16:30', title: 'Sync săptămânal clienți retail', context: 'RetailPro, FreshMarket, AgroFarm' }
+        { id: 'default-1', title: 'Stand-up echipă recrutare', date: formatDate(0), time: '08:30', details: 'Zoom • Moderator: Larisa' },
+        { id: 'default-2', title: 'Interviu final — TechWorks', date: formatDate(0), time: '11:00', details: 'Cand.: Ioana Marin • Client: Vlad Popescu' },
+        { id: 'default-3', title: 'Ofertă financiară — Green Energy', date: formatDate(0), time: '14:00', details: 'Cand.: Mihai Stan • Pending aprobări' },
+        { id: 'default-4', title: 'Sync săptămânal clienți retail', date: formatDate(1), time: '16:30', details: 'RetailPro, FreshMarket, AgroFarm' }
       ],
       alerts: [
         { type: 'warn', typeLabel: 'ALERTĂ', title: '5 candidați fără feedback 48h', description: 'Oferă un răspuns rapid pentru a menține NPS > 80.' },
@@ -315,7 +560,6 @@
         { title: 'Nou client strategic', detail: 'Stratos Management extinde contract pe 2 ani.' },
         { title: 'CSAT candidați', detail: 'Scor 4.7 / 5 pe ultimele 20 feedback-uri.' }
       ],
-      clientsActive: 17,
       openOrders: 24,
       clientSatisfaction: 91,
       internalRequests: 9,
@@ -400,7 +644,12 @@
   }
 
   document.addEventListener('iwf:view-change', (event) => {
-    if (event.detail?.view === 'settings') {
+    const view = event.detail?.view;
+    if (view === 'dashboard') {
+      initDashboardView();
+    }
+
+    if (view === 'settings') {
       const prefs = Object.assign({ theme: 'light', ai: 'standard', reports: 'weekly', tz: 'Europe/Bucharest' }, getPreferences());
       const $ = (id) => document.getElementById(id);
       $('pref_save')?.addEventListener('click', () => {
