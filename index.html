@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IWF CRM v9 — Recrutare Globală (UI 2025)</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Poppins", Arial, sans-serif;
+      background: radial-gradient(circle at 30% 20%, rgba(166, 32, 145, 0.35), transparent 40%),
+                  radial-gradient(circle at 80% 80%, rgba(94, 43, 151, 0.25), transparent 40%), #111218;
+      color: #fff;
+    }
+    .hidden { display: none; }
+  </style>
+</head>
+
+<body class="login-open">
+
+  <!-- === LOGIN SCREEN === -->
+  <section id="login" class="login-wrap">
+    <div class="login-card">
+      <div>
+        <div style="display:inline-flex;align-items:center;gap:10px;padding:8px 12px;
+          border-radius:999px;background:rgba(166,32,145,.18);border:1px solid rgba(166,32,145,.35);
+          font-weight:800;color:#fff;">
+          <img alt="Logo" style="height:22px;width:22px" src="iwf_logo.svg">
+          International Work Finder
+        </div>
+
+        <h1 style="font-size:26px;font-weight:800;margin:12px 0 6px;">CRM — Recrutare Globală</h1>
+        <p style="margin:0 0 18px;color:#bbb;">România → Plasamente internaționale</p>
+
+        <label>Email</label>
+        <input id="email" type="email" value="manager@iwf.local">
+        <label style="margin-top:10px;">Parolă</label>
+        <input id="pwd" type="password" value="demo">
+        <div style="display:flex;gap:10px;margin-top:16px;align-items:center">
+          <button id="btn-enter" class="btn">Autentificare (demo)</button>
+          <button class="btn" style="background:#444;">Tur demo</button>
+        </div>
+        <p style="margin-top:12px;font-size:13px;color:#aaa;">
+          Acesta este un demo local — nu se trimit date nicăieri.
+        </p>
+      </div>
+
+      <div style="padding-left:30px;">
+        <h3>Ce poți vedea</h3>
+        <ul style="color:#ddd;line-height:1.6;margin-top:6px;">
+          <li>Panou principal modern</li>
+          <li>Gestionezi candidați & clienți</li>
+          <li>Comenzi & cereri interne</li>
+          <li>Rapoarte & grafice</li>
+        </ul>
+        <div style="margin-top:14px;">
+          <strong style="color:#bbb">Culoare brand:</strong>
+          <span style="background:#fff;color:#a62091;padding:4px 8px;border-radius:6px;font-weight:700">
+            #a62091
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- === APP === -->
+  <section id="app" class="app hidden">
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-badge">
+            <img src="iwf_logo.svg" alt="Logo" class="logo-embed">
+          </div>
+          <div>
+            <h1>International Work Finder</h1>
+            <div class="muted small">Manager demo</div>
+          </div>
+        </div>
+        <nav class="nav" id="nav">
+          <button data-view="dashboard" class="active"><i data-lucide="layout-dashboard"></i><span>Panou principal</span></button>
+          <button data-view="candidates"><i data-lucide="users"></i><span>Candidați</span></button>
+          <button data-view="clients"><i data-lucide="briefcase"></i><span>Clienți</span></button>
+          <button data-view="orders"><i data-lucide="file-text"></i><span>Comenzi</span></button>
+          <button data-view="requests"><i data-lucide="clipboard-list"></i><span>Cereri interne</span></button>
+          <button data-view="reports"><i data-lucide="bar-chart-3"></i><span>Rapoarte</span></button>
+          <button data-view="settings"><i data-lucide="settings"></i><span>Setări</span></button>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <div class="topbar">
+          <div class="muted" id="crumb" style="font-weight:800">Panou principal</div>
+          <div class="search">
+            <input id="global-search" placeholder="Căutare… (Enter)" class="input" style="padding:8px 10px;border:1px solid #ddd;border-radius:6px;">
+          </div>
+        </div>
+        <div id="main-content" class="content" style="padding:20px;">
+          <div class="card">
+            <h2>Bine ai revenit!</h2>
+            <p>Aici vei găsi candidații recent adăugați, clienții activi și cererile noi de recrutare.</p>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- === LOGIN LOGIC === -->
+  <script>
+    const login = document.getElementById("login");
+    const app = document.getElementById("app");
+    const btn = document.getElementById("btn-enter");
+
+    btn.addEventListener("click", () => {
+      document.body.classList.remove("login-open");
+      login.style.transition = "opacity .4s ease";
+      login.style.opacity = "0";
+      setTimeout(() => {
+        login.style.display = "none";
+        app.classList.remove("hidden");
+        app.style.opacity = "0";
+        app.style.transition = "opacity .4s ease";
+        setTimeout(() => app.style.opacity = "1", 50);
+        lucide.createIcons();
+      }, 400);
+    });
+  </script>
+
+  <!-- === MODULES === -->
+  <script src="app.js"></script>
+  <script src="candidates.js"></script>
+  <script src="clients.js"></script>
+  <script src="orders.js"></script>
+  <script src="requests.js"></script>
+  <script src="reports.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>
