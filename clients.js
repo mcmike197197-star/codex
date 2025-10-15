@@ -43,13 +43,37 @@
 
   // ---------- Main list ----------
   function renderList(){
+    const totalClients = dbClients.length;
+    const activePlacements = dbClients.reduce((acc, cl) => acc + (cl.placements?.length||0), 0);
+    const proposed = dbClients.reduce((acc, cl) => acc + (cl.proposed?.length||0), 0);
+
     mainContent.innerHTML=`
       <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-          <h2 style="margin:0">Clienți activi</h2>
-          <button class="btn" id="add_client">Adaugă client</button>
+        <div class="flex-between" style="flex-wrap:wrap;gap:14px;">
+          <div>
+            <h2 style="margin:0;">Clienți activi</h2>
+            <p class="muted" style="margin:6px 0 0;">Portofoliu global & pipeline de plasări</p>
+          </div>
+          <button class="btn" id="add_client"><i data-lucide="plus"></i> Client nou</button>
         </div>
-        <div style="margin-top:10px;overflow:auto">
+        <div class="stats-grid" style="margin-top:18px;">
+          <div class="stat-card">
+            <span>Total clienți</span>
+            <strong>${totalClients}</strong>
+            <small class="muted">${activePlacements} plasări totale</small>
+          </div>
+          <div class="stat-card">
+            <span>Propuneri active</span>
+            <strong>${proposed}</strong>
+            <small class="muted">Generat din pool candidați</small>
+          </div>
+          <div class="stat-card">
+            <span>Satisfacție estimată</span>
+            <strong>92%</strong>
+            <small class="muted">Ultimele feedback-uri</small>
+          </div>
+        </div>
+        <div class="table-responsive" style="margin-top:22px;">
           <table>
             <thead><tr><th>Client</th><th>Țară</th><th>Contact</th><th>Plasări</th><th></th></tr></thead>
             <tbody>${dbClients.map(cl=>`
@@ -58,7 +82,7 @@
                 <td>${cl.country}</td>
                 <td>${cl.contact.name} • ${cl.contact.email}</td>
                 <td>${cl.placements.length}</td>
-                <td><button class="btn" data-open="${cl.id}">Deschide</button></td>
+                <td><button class="btn ghost" data-open="${cl.id}">Deschide</button></td>
               </tr>`).join('')}
             </tbody>
           </table>
@@ -69,6 +93,7 @@
       b.addEventListener('click',()=>openClient(b.dataset.open));
     });
     document.getElementById('add_client').addEventListener('click',createClient);
+    if (window.lucide) { lucide.createIcons(); }
   }
 
   // ---------- Add client ----------
@@ -76,13 +101,17 @@
     mainContent.innerHTML=`
       <div class="card">
         <h2>Client nou</h2>
-        <div style="display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:10px">
+        <p class="muted">Completează detaliile principale pentru a adăuga un nou partener în ecosistem.</p>
+        <div class="grid-two" style="margin-top:18px;">
           <label>Nume companie<input id="cl_name" class="input"></label>
           <label>Țară<input id="cl_country" class="input" value="România"></label>
           <label>Persoană contact<input id="cl_person" class="input"></label>
           <label>Email contact<input id="cl_email" class="input"></label>
         </div>
-        <div style="margin-top:12px"><button class="btn" id="save_client">Salvează</button> <button class="btn" id="back">Înapoi</button></div>
+        <div style="margin-top:18px;display:flex;gap:12px;">
+          <button class="btn" id="save_client">Salvează</button>
+          <button class="btn ghost" id="back">Înapoi</button>
+        </div>
       </div>
     `;
     document.getElementById('back').addEventListener('click',renderList);
@@ -100,6 +129,7 @@
       renderList();
       alert('Client adăugat');
     });
+    if (window.lucide) { lucide.createIcons(); }
   }
 
   // ---------- Open client ----------
@@ -109,14 +139,33 @@
 
     mainContent.innerHTML=`
       <div class="card">
-        <button class="btn" id="back_list">⟵ Înapoi la listă</button>
+        <button class="btn ghost" id="back_list">⟵ Înapoi la listă</button>
       </div>
 
-      <div class="card">
-        <h2>${cl.name}</h2>
-        <p class="muted">Țară: ${cl.country}</p>
-        <p>Contact: <strong>${cl.contact.name}</strong> • ${cl.contact.email}</p>
-        <div style="margin-top:10px"><button class="btn" id="add_prop">Propune candidat</button></div>
+      <div class="card" style="display:grid;grid-template-columns:2fr 1fr;gap:24px;">
+        <div>
+          <h2 style="margin-top:0;">${cl.name}</h2>
+          <p class="muted">${cl.country} • Contact: <strong>${cl.contact.name}</strong> • ${cl.contact.email}</p>
+          <div class="glass-card" style="margin-top:18px;display:flex;gap:18px;flex-wrap:wrap;">
+            <div>
+              <div class="muted" style="font-size:12px;text-transform:uppercase;">Propuneri active</div>
+              <strong style="font-size:24px;">${cl.proposed.length}</strong>
+            </div>
+            <div>
+              <div class="muted" style="font-size:12px;text-transform:uppercase;">Plasări</div>
+              <strong style="font-size:24px;">${cl.placements.length}</strong>
+            </div>
+            <div class="progress-line" style="flex:1;align-self:center;"><span style="width:${Math.min(100, cl.placements.length*20)}%"></span></div>
+          </div>
+          <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap;">
+            <button class="btn" id="add_prop"><i data-lucide="user-check"></i> Propune candidat</button>
+            <button class="btn ghost" id="export_client"><i data-lucide="download"></i> Exportă raport</button>
+          </div>
+        </div>
+        <div class="glass-card">
+          <h3 style="margin-top:0;">Notițe rapide</h3>
+          <p class="muted" style="margin:0;">Parteneriat activ pe logistică și retail. SLA de răspuns: 24h. Recomandare: trimite update săptămânal cu status pipeline.</p>
+        </div>
       </div>
 
       <div class="card">
@@ -126,6 +175,17 @@
     `;
     document.getElementById('back_list').addEventListener('click',renderList);
     document.getElementById('add_prop').addEventListener('click',()=>addProposed(cl));
+    document.getElementById('export_client').addEventListener('click',()=>{
+      const rows = ['client,contact_email,propuneri,plasari'];
+      rows.push(`${cl.name},${cl.contact.email},${cl.proposed.length},${cl.placements.length}`);
+      const txt = rows.join('\n');
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(new Blob([txt],{type:'text/csv;charset=utf-8;'}));
+      a.download=`client_${cl.id}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+    if (window.lucide) { lucide.createIcons(); }
   }
 
   function renderProposed(cl){
@@ -134,11 +194,9 @@
     return cl.proposed.map(p=>{
       const pct=Math.round((stages.indexOf(p.stage)/(stages.length-1))*100);
       return `
-        <div style="display:flex;align-items:center;gap:10px;margin:6px 0">
+        <div class="glass-card" style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
           <div style="min-width:220px"><strong>${p.name}</strong><div class="muted" style="font-size:12px">${p.title}</div></div>
-          <div style="flex:1;height:8px;border-radius:999px;background:linear-gradient(90deg,#d946ef,#f59e0b,#22c55e);position:relative">
-            <div style="position:absolute;top:0;bottom:0;width:2px;background:#fff;left:${pct}%;box-shadow:0 0 0 2px rgba(255,255,255,.3)"></div>
-          </div>
+          <div class="progress-line" style="flex:1;"><span style="width:${pct}%"></span></div>
           <div style="min-width:100px;text-align:right;font-size:12px" class="muted">${p.stage}</div>
         </div>
       `;
@@ -151,15 +209,21 @@
     mainContent.innerHTML=`
       <div class="card">
         <h2>Propune candidat către ${cl.name}</h2>
-        <label>Candidat
-          <select id="cand_sel" class="input">${opts}</select>
-        </label>
-        <label>Etapă
-          <select id="cand_stage" class="input">
-            <option>Propus</option><option>Interviu</option><option>Ofertă</option><option>Angajat</option>
-          </select>
-        </label>
-        <div style="margin-top:10px"><button class="btn" id="save_prop">Salvează</button> <button class="btn" id="cancel_prop">Renunță</button></div>
+        <p class="muted">Selectează candidatul și etapa curentă pentru a-l trimite către client.</p>
+        <div class="grid-two" style="margin-top:16px;">
+          <label>Candidat
+            <select id="cand_sel" class="input">${opts}</select>
+          </label>
+          <label>Etapă
+            <select id="cand_stage" class="input">
+              <option>Propus</option><option>Interviu</option><option>Ofertă</option><option>Angajat</option>
+            </select>
+          </label>
+        </div>
+        <div style="margin-top:18px;display:flex;gap:12px;">
+          <button class="btn" id="save_prop">Salvează</button>
+          <button class="btn ghost" id="cancel_prop">Renunță</button>
+        </div>
       </div>
     `;
     document.getElementById('cancel_prop').addEventListener('click',()=>openClient(cl.id));
@@ -183,6 +247,7 @@
       openClient(cl.id);
       alert('Candidat propus către client');
     });
+    if (window.lucide) { lucide.createIcons(); }
   }
 
   // Auto open clients if active
