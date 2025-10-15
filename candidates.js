@@ -13,7 +13,9 @@
   const nav = document.querySelector('.nav');
 
   // ---- UI state (pagina curentă, filtrul, ultima vedere)
-  const ui = loadState() || { page: 1, perPage: 25, query: '', lastView: 'list' };
+  const ui = loadState() || { page: 1, perPage: 12, query: '', status: 'all', lastView: 'list' };
+  if (!ui.perPage) ui.perPage = 12;
+  if (!ui.status) ui.status = 'all';
 
   // ---- DB mock: 50 candidați RO + listă clienți
   let db = loadDB();
@@ -125,6 +127,9 @@
         (c.location || '').toLowerCase().includes(q)
       );
     }
+    if (ui.status && ui.status !== 'all') {
+      list = list.filter(c => (c.status || '').toLowerCase() === ui.status.toLowerCase());
+    }
     return list;
   }
 
@@ -142,41 +147,69 @@
     const list = getFiltered();
     const { total, pages, slice } = paginate(list);
 
-    const tableRows = slice.map(c => `
-      <tr>
-        <td>
-          <a href="#" data-open="${c.id}" style="font-weight:700">${c.firstName} ${c.lastName}</a>
-          <div class="muted" style="font-size:12px">${c.email}</div>
-        </td>
-        <td>${c.location||''}</td>
-        <td>${c.title||''}</td>
-        <td>${c.experienceYears||0} ani</td>
-        <td><span class="badge ${c.status==='Activ'?'success':'warn'}">${c.status}</span></td>
-      </tr>
-    `).join('');
+    const cards = slice.map(c => {
+      const initials = `${(c.firstName||'')[0]||''}${(c.lastName||'')[0]||''}`.toUpperCase();
+      const placements = c.placements || [];
+      let bestIdx = -1;
+      let bestStage = STAGES[0];
+      placements.forEach(p => {
+        const idx = STAGES.indexOf(p.stage);
+        if (idx > bestIdx) { bestIdx = idx; bestStage = p.stage; }
+      });
+      const progress = bestIdx >= 0 ? Math.round((bestIdx / (STAGES.length - 1)) * 100) : 8;
+      const created = fmtDate(c.createdAt);
+      return `
+        <div class="candidate-card" data-open="${c.id}">
+          <div class="candidate-head">
+            <div class="initials">${initials}</div>
+            <div style="flex:1;">
+              <h4>${c.firstName} ${c.lastName} <span class="badge ${c.status==='Activ'?'success':'warn'}">${c.status}</span></h4>
+              <div class="candidate-meta">
+                <span class="meta-pill"><i data-lucide="map-pin"></i>${c.location||'—'}</span>
+                <span class="meta-pill"><i data-lucide="briefcase"></i>${c.title||'Rol nedefinit'}</span>
+                <span class="meta-pill"><i data-lucide="clock"></i>${c.experienceYears||0} ani exp.</span>
+              </div>
+            </div>
+          </div>
+          <div class="progress-line"><span style="width:${progress}%"></span></div>
+          <div class="candidate-meta" style="margin-top:4px;">
+            <span class="meta-pill"><i data-lucide="mail"></i>${c.email||'—'}</span>
+            <span class="meta-pill"><i data-lucide="phone"></i>${c.phone||'—'}</span>
+            <span class="meta-pill"><i data-lucide="shield-check"></i>${bestStage||'Propus'}</span>
+          </div>
+          <div class="card-footer">
+            <span>Creat de ${c.createdBy}</span>
+            <span>Ultim update: ${created}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
 
     mainContent.innerHTML = `
       <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <h2 style="margin:0">Candidați externi</h2>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input id="cand_q" placeholder="Caută nume, email, funcție, oraș" class="input" style="padding:8px 12px;min-width:280px">
-            <button class="btn" id="cand_add">Adaugă candidat</button>
+        <div class="flex-between" style="flex-wrap:wrap;gap:14px;">
+          <div>
+            <h2 style="margin:0;">Candidați externi</h2>
+            <p class="muted" style="margin:6px 0 0;">Monitorizare AI & pipeline vizual</p>
+            <div class="chip-set" id="cand_filters">
+              <span class="chip ${ui.status==='all'?'active':''}" data-filter="all">Toți</span>
+              <span class="chip ${ui.status==='Activ'?'active':''}" data-filter="Activ">Activ</span>
+              <span class="chip ${ui.status==='Inactiv'?'active':''}" data-filter="Inactiv">Inactiv</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <input id="cand_q" placeholder="Caută nume, email, funcție, oraș" class="input" style="min-width:280px">
+            <button class="btn" id="cand_add">Candidat nou</button>
           </div>
         </div>
-        <div style="margin-top:10px;overflow:auto">
-          <table>
-            <thead>
-              <tr><th>Candidat</th><th>Locație</th><th>Funcție</th><th>Experiență</th><th>Status</th></tr>
-            </thead>
-            <tbody>${tableRows}</tbody>
-          </table>
+        <div class="candidate-grid" id="cand_grid">
+          ${cards || '<div class="muted">Nu există candidați pe această pagină.</div>'}
         </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:18px;flex-wrap:wrap;gap:10px;">
           <div class="muted" style="font-size:13px">Total: <strong>${total}</strong> • Pagina <strong>${ui.page}</strong> / ${pages}</div>
-          <div style="display:flex;gap:8px">
-            <button class="btn" id="pg_prev" ${ui.page<=1?'disabled':''}>◀️ Anterioară</button>
-            <button class="btn" id="pg_next" ${ui.page>=pages?'disabled':''}>Următoare ▶️</button>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn ghost" id="pg_prev" ${ui.page<=1?'disabled':''}>◀️ Înapoi</button>
+            <button class="btn" id="pg_next" ${ui.page>=pages?'disabled':''}>Înainte ▶️</button>
           </div>
         </div>
       </div>
@@ -202,11 +235,20 @@
       if (ui.page<pages2){ ui.page++; saveState(); renderList(); }
     });
 
+    document.querySelectorAll('#cand_filters .chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        ui.status = chip.dataset.filter;
+        ui.page = 1;
+        saveState();
+        renderList();
+      });
+    });
+
     // Open profile
-    mainContent.querySelectorAll('[data-open]').forEach(a=>{
-      a.addEventListener('click', (e)=>{
+    mainContent.querySelectorAll('[data-open]').forEach(card=>{
+      card.addEventListener('click', (e)=>{
         e.preventDefault();
-        openProfile(a.getAttribute('data-open'));
+        openProfile(card.getAttribute('data-open'));
       });
     });
 
@@ -226,6 +268,10 @@
       ui.page = 1; ui.query = ''; saveState();
       openProfile(id);
     });
+
+    if (window.lucide) {
+      lucide.createIcons();
+    }
   }
 
   // ---------- Profil candidat ----------
@@ -236,29 +282,54 @@
     const c = db.candidates.find(x => x.id === id);
     if (!c) { renderList(); return; }
 
+    const initials = `${(c.firstName||'')[0]||''}${(c.lastName||'')[0]||''}`.toUpperCase();
+    const lastStage = (c.placements||[]).reduce((acc, p) => {
+      const idx = STAGES.indexOf(p.stage);
+      return idx > acc.idx ? { stage: p.stage, idx } : acc;
+    }, { stage: STAGES[0], idx: 0 });
+
     mainContent.innerHTML = `
       <div class="card">
-        <button class="btn" id="back_to_list">⟵ Înapoi la lista de candidați</button>
+        <button class="btn ghost" id="back_to_list">⟵ Înapoi la lista de candidați</button>
       </div>
 
-      <div class="card" style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
-        <div style="min-width:220px">
-          <div style="width:88px;height:88px;border-radius:50%;background:#f2e8f0;color:#a62091;font-weight:900;display:flex;align-items:center;justify-content:center;font-size:28px">
-            ${c.firstName[0]}${c.lastName[0]}
+      <div class="card">
+        <div class="profile-header">
+          <div class="profile-identity">
+            <div class="avatar-lg">${initials}</div>
+            <div>
+              <h2 style="margin:0;">${c.firstName} ${c.lastName} <span class="badge ${c.status==='Activ'?'success':'warn'}">${c.status}</span></h2>
+              <p class="muted" style="margin:6px 0 0;">${c.title||'Funcție nedefinită'} • ${c.location||'—'}</p>
+              <p class="muted" style="margin:6px 0 0;font-size:13px;">Creat de ${c.createdBy} • ${fmtDate(c.createdAt)}</p>
+              <div class="profile-actions" style="margin-top:14px;">
+                <button class="btn" id="save_profile">Salvează</button>
+                <button class="btn ghost" id="profile_export">Exportă profil</button>
+              </div>
+            </div>
+            <div class="glass-card" style="width:100%;">
+              <div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:0.12em;">Contact & status</div>
+              <p style="margin:8px 0 0;">${c.email||'—'}<br>${c.phone||'—'}</p>
+              <p class="muted" style="margin:12px 0 0;font-size:13px;">Ultima etapă: <strong>${lastStage.stage}</strong></p>
+              <p class="muted" style="margin:4px 0 0;font-size:13px;">Experiență: <strong>${c.experienceYears||0} ani</strong></p>
+            </div>
           </div>
-        </div>
-        <div style="flex:1">
-          <h2 style="margin:0">${c.firstName} ${c.lastName} <span class="badge ${c.status==='Activ'?'success':'warn'}">${c.status}</span></h2>
-          <div class="muted" style="margin-top:4px">${c.title||'Funcție nedefinită'} • ${c.location||''}</div>
-          <div class="muted" style="font-size:13px;margin-top:4px">Creat de <strong>${c.createdBy}</strong> pe <strong>${fmtDate(c.createdAt)}</strong></div>
-        </div>
-        <div>
-          <button class="btn" id="save_profile">💾 Salvează</button>
+          <div class="glass-card" style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <h3 style="margin:0;">Insight-uri AI</h3>
+              <p class="muted" style="margin:6px 0 0;">Compatibilitate ridicată cu ${suggestClient()} • Scor cultură 8.7 / 10</p>
+            </div>
+            <div class="stage-timeline">
+              ${STAGES.map(stage => `
+                <div class="stage-chip ${stage===lastStage.stage?'active':''}">${stage}</div>
+              `).join('')}
+            </div>
+            <div class="muted" style="font-size:12px;">Notă: scorurile și sugestiile sunt generate automat pentru demo.</div>
+          </div>
         </div>
       </div>
 
       <div class="card">
-        <div style="display:flex;gap:8px;flex-wrap:wrap" id="tabs">
+        <div class="tab-buttons" id="tabs">
           <button class="btn" data-tab="profil">Profil</button>
           <button class="btn" data-tab="documente">Documente</button>
           <button class="btn" data-tab="istoric">Istoric</button>
@@ -267,11 +338,15 @@
         </div>
       </div>
 
-      <div id="tab-content"></div>
+      <div id="tab-content" class="tab-section"></div>
     `;
 
     document.getElementById('back_to_list').addEventListener('click', ()=>{ ui.lastView='list'; saveState(); renderList(); });
-    document.getElementById('save_profile').addEventListener('click', ()=>{ persistDB(); alert('Salvat!'); });
+    document.getElementById('save_profile').addEventListener('click', ()=>{ persistDB(); alert('Profil salvat în demo.'); });
+    document.getElementById('profile_export').addEventListener('click', ()=>{
+      const csv = `nume,functie,email,telefon,locatie,status\n${c.firstName} ${c.lastName},${c.title||''},${c.email||''},${c.phone||''},${c.location||''},${c.status}`;
+      download(`${c.id}.csv`, csv);
+    });
 
     const tabs = document.getElementById('tabs');
     tabs.addEventListener('click', (e)=>{
@@ -280,26 +355,45 @@
       renderTab(b.dataset.tab, c);
     });
 
-    // deschide implicit Profil
     renderTab('profil', c);
+    if (window.lucide) { lucide.createIcons(); }
   }
 
   function renderTab(which, c) {
     const host = document.getElementById('tab-content');
+    document.querySelectorAll('#tabs .btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === which);
+    });
 
     if (which === 'profil') {
       host.innerHTML = `
         <div class="card">
           <h3>Profil general</h3>
-          <div style="display:grid;grid-template-columns:repeat(2, minmax(220px, 1fr));gap:10px">
-            <label>Nume complet <input id="pf_full" class="input" value="${c.firstName} ${c.lastName}"></label>
-            <label>Funcție <input id="pf_title" class="input" value="${c.title||''}"></label>
-            <label>Email <input id="pf_email" class="input" value="${c.email||''}"></label>
-            <label>Telefon <input id="pf_phone" class="input" value="${c.phone||''}"></label>
-            <label>Naționalitate <input id="pf_nat" class="input" value="${c.nationality||'România'}"></label>
-            <label>Locație <input id="pf_loc" class="input" value="${c.location||''}"></label>
-            <label>Data nașterii <input id="pf_dob" type="date" class="input" value="${(c.dob||'').slice(0,10)}"></label>
-            <label>Experiență (ani) <input id="pf_exp" type="number" class="input" value="${c.experienceYears||0}"></label>
+          <div class="grid-two">
+            <label>Nume complet
+              <input id="pf_full" class="input" value="${c.firstName} ${c.lastName}">
+            </label>
+            <label>Funcție
+              <input id="pf_title" class="input" value="${c.title||''}">
+            </label>
+            <label>Email
+              <input id="pf_email" class="input" value="${c.email||''}">
+            </label>
+            <label>Telefon
+              <input id="pf_phone" class="input" value="${c.phone||''}">
+            </label>
+            <label>Naționalitate
+              <input id="pf_nat" class="input" value="${c.nationality||'România'}">
+            </label>
+            <label>Locație
+              <input id="pf_loc" class="input" value="${c.location||''}">
+            </label>
+            <label>Data nașterii
+              <input id="pf_dob" type="date" class="input" value="${(c.dob||'').slice(0,10)}">
+            </label>
+            <label>Experiență (ani)
+              <input id="pf_exp" type="number" class="input" value="${c.experienceYears||0}">
+            </label>
             <label>Status
               <select id="pf_status" class="input">
                 <option ${c.status==='Activ'?'selected':''}>Activ</option>
@@ -307,9 +401,15 @@
               </select>
             </label>
           </div>
-          <div style="margin-top:8px" class="muted">Vârstă estimată: <strong>${ageFromDOB(c.dob)||'—'}</strong> ani</div>
-          <div style="margin-top:10px"><label>Note</label><textarea id="pf_notes" class="input" style="min-height:120px">${c.notes||''}</textarea></div>
-          <div style="margin-top:12px"><button class="btn" id="pf_save_local">Salvează modificări</button></div>
+          <div class="muted" style="margin-top:12px;">Vârstă estimată: <strong>${ageFromDOB(c.dob)||'—'}</strong> ani</div>
+          <div style="margin-top:16px;">
+            <label>Note</label>
+            <textarea id="pf_notes" class="input">${c.notes||''}</textarea>
+          </div>
+          <div style="margin-top:16px;display:flex;gap:10px;">
+            <button class="btn" id="pf_save_local">Salvează modificări</button>
+            <button class="btn ghost" id="pf_cancel">Anulează</button>
+          </div>
         </div>
       `;
       document.getElementById('pf_save_local').addEventListener('click', ()=>{
@@ -329,6 +429,7 @@
         persistDB();
         alert('Profil salvat.');
       });
+      document.getElementById('pf_cancel').addEventListener('click', ()=>renderTab('profil', c));
       return;
     }
 
@@ -336,7 +437,8 @@
       host.innerHTML = `
         <div class="card">
           <h3>Documente</h3>
-          <div style="display:grid;grid-template-columns:repeat(3, minmax(220px, 1fr));gap:10px">
+          <p class="muted">Încarcă documente esențiale și urmărește istoricul încărcărilor.</p>
+          <div class="grid-two">
             <label>Categorie
               <select id="doc_cat" class="input">
                 <option>Carte identitate</option>
@@ -354,10 +456,12 @@
               <input id="doc_file" type="file" class="input">
             </label>
           </div>
-          <div style="margin-top:12px"><button class="btn" id="doc_add">Încarcă (mock)</button></div>
+          <div style="margin-top:16px;">
+            <button class="btn" id="doc_add">Încarcă (mock)</button>
+          </div>
 
-          <div class="card" style="margin-top:12px">
-            <h4 style="margin:0 0 8px">Documente existente</h4>
+          <div class="glass-card" style="margin-top:18px;">
+            <h4 style="margin:0 0 8px;">Documente existente</h4>
             <div id="doc_list">${renderDocs(c)}</div>
           </div>
         </div>
@@ -370,6 +474,7 @@
         persistDB();
         renderTab('documente', c);
       });
+      if (window.lucide) { lucide.createIcons(); }
       return;
     }
 
@@ -377,19 +482,24 @@
       host.innerHTML = `
         <div class="card">
           <h3>Istoric (audit trail)</h3>
-          <div>${c.history.map(h=>`
-            <div style="display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding:8px 0">
-              <div><strong>${h.who}</strong> — ${h.action}</div>
-              <div class="muted" style="font-size:12px">${fmtDate(h.when)}</div>
-            </div>
-          `).join('') || '<div class="muted">Fără evenimente.</div>'}</div>
-          <div style="margin-top:12px"><button class="btn" id="audit_dl">Descarcă CSV</button></div>
+          <div class="timeline">
+            ${c.history.map(h=>`
+              <div class="timeline-item">
+                <div><strong>${h.who}</strong> — ${h.action}</div>
+                <div class="muted" style="font-size:12px;">${fmtDate(h.when)}</div>
+              </div>
+            `).join('') || '<div class="muted">Fără evenimente.</div>'}
+          </div>
+          <div style="margin-top:16px;">
+            <button class="btn" id="audit_dl">Descarcă CSV</button>
+          </div>
         </div>
       `;
       document.getElementById('audit_dl').addEventListener('click', ()=>{
         const rows = ['when,who,action'].concat(c.history.map(h=>`${h.when},${h.who},${h.action.replaceAll(',',';')}`));
         download(`audit_${c.id}.csv`, rows.join('\n'));
       });
+      if (window.lucide) { lucide.createIcons(); }
       return;
     }
 
@@ -397,16 +507,20 @@
       host.innerHTML = `
         <div class="card">
           <h3>Adaugă plasare</h3>
-          <div style="display:grid;grid-template-columns:repeat(3, minmax(220px, 1fr));gap:10px">
-            <label>Client <input id="pl_client" class="input" placeholder="Tastează primele litere…"></label>
-            <label>Poziție <input id="pl_title" class="input" placeholder="Ex: Operator depozit"></label>
+          <div class="grid-two">
+            <label>Client
+              <input id="pl_client" class="input" placeholder="Tastează primele litere…">
+            </label>
+            <label>Poziție
+              <input id="pl_title" class="input" placeholder="Ex: Operator depozit">
+            </label>
             <label>Etapă
               <select id="pl_stage" class="input">
                 ${STAGES.map(s=>`<option>${s}</option>`).join('')}
               </select>
             </label>
           </div>
-          <div style="margin-top:10px"><button class="btn" id="pl_add">Salvează plasarea</button></div>
+          <div style="margin-top:14px;"><button class="btn" id="pl_add">Salvează plasarea</button></div>
         </div>
 
         <div class="card">
@@ -414,12 +528,13 @@
           <div>${(c.placements||[]).map(p=>{
             const pct = Math.round((STAGES.indexOf(p.stage)/(STAGES.length-1))*100);
             return `
-              <div style="display:flex;align-items:center;gap:10px;margin:8px 0">
-                <div style="min-width:240px"><strong>${p.client}</strong><div class="muted" style="font-size:12px">${p.title}</div></div>
-                <div style="flex:1;height:8px;border-radius:999px;background:linear-gradient(90deg,#d946ef,#f59e0b,#22c55e);position:relative">
-                  <div style="position:absolute;top:0;bottom:0;width:2px;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.3);left:${pct}%"></div>
+              <div class="glass-card" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                <div style="min-width:220px;">
+                  <strong>${p.client}</strong>
+                  <div class="muted" style="font-size:12px;">${p.title}</div>
                 </div>
-                <div class="muted" style="min-width:120px;font-size:12px;text-align:right">${p.stage}</div>
+                <div class="progress-line" style="flex:1;"><span style="width:${pct}%"></span></div>
+                <div class="muted" style="min-width:120px;text-align:right;font-size:12px;">${p.stage}</div>
               </div>
             `;
           }).join('') || '<div class="muted">Nicio plasare încă.</div>'}</div>
@@ -447,6 +562,7 @@
         persistDB();
         renderTab('plasari', c);
       });
+      if (window.lucide) { lucide.createIcons(); }
       return;
     }
 
@@ -456,14 +572,25 @@
       host.innerHTML = `
         <div class="card">
           <h3>Financiar</h3>
-          <div style="display:grid;grid-template-columns:repeat(2, minmax(220px, 1fr));gap:10px">
-            <label>Fee (multiplicator) <input id="fi_mult" type="number" step="0.01" class="input" value="${fm.feeMultiplier||1.3}"></label>
-            <label>Salariu NET (RON) <input id="fi_net" type="number" class="input" value="${fm.net||0}"></label>
-            <label>Salariu BRUT (RON) <input id="fi_gross" type="number" class="input" value="${fm.gross||grossCalc(fm.net)||0}"></label>
-            <label>Fee final (RON) <input id="fi_fee" type="number" class="input" value="${fm.fee||((fm.feeMultiplier||1.3)*(fm.gross||grossCalc(fm.net)||0))}"></label>
+          <div class="grid-two">
+            <label>Fee (multiplicator)
+              <input id="fi_mult" type="number" step="0.01" class="input" value="${fm.feeMultiplier||1.3}">
+            </label>
+            <label>Salariu NET (RON)
+              <input id="fi_net" type="number" class="input" value="${fm.net||0}">
+            </label>
+            <label>Salariu BRUT (RON)
+              <input id="fi_gross" type="number" class="input" value="${fm.gross||grossCalc(fm.net)||0}">
+            </label>
+            <label>Fee final (RON)
+              <input id="fi_fee" type="number" class="input" value="${fm.fee||((fm.feeMultiplier||1.3)*(fm.gross||grossCalc(fm.net)||0))}">
+            </label>
           </div>
-          <div style="margin-top:10px"><button class="btn" id="fi_calc">Recalculează</button> <button class="btn" id="fi_save">Salvează</button></div>
-          <p class="muted" style="margin-top:8px;font-size:12px">Notă: conversia NET→BRUT este estimativă (×1.43) pentru demo.</p>
+          <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn" id="fi_calc">Recalculează</button>
+            <button class="btn ghost" id="fi_save">Salvează</button>
+          </div>
+          <p class="muted" style="margin-top:10px;font-size:12px">Notă: conversia NET→BRUT este estimativă (×1.43) pentru demo.</p>
         </div>
       `;
       const $ = id => document.getElementById(id);
@@ -486,6 +613,7 @@
         persistDB();
         alert('Date financiare salvate.');
       });
+      if (window.lucide) { lucide.createIcons(); }
       return;
     }
   }
@@ -514,4 +642,10 @@
       }
     }
   });
+
+  function suggestClient(){
+    const clients = db.clients || [];
+    if (!clients.length) return 'un client partener';
+    return clients[Math.floor(Math.random()*clients.length)];
+  }
 })();
