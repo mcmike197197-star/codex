@@ -507,22 +507,32 @@
       return dt.toISOString().slice(0, 10);
     };
 
+    const totals = {
+      candidatesIntroducedToday: 26,
+      candidatesAddedThisWeek: 18,
+      clientsNewThisWeek: 4,
+      clientsActive: 54,
+      candidatesActive: 128
+    };
+
     return {
       weeklyHires: 12,
       weeklyTrend: '+3 față de săptămâna trecută',
+      totals,
       weeklySnapshot: [
-        { label: 'Candidați introduși', value: '26', context: 'în ultimele 24h', icon: 'user-plus', accent: 'magenta' },
-        { label: 'Adăugați în săptămână', value: '18', context: 'candidați noi în CRM', icon: 'user-check', accent: 'teal' },
-        { label: 'Clienți noi', value: '4', context: 'parteneri recent activați', icon: 'building-2', accent: 'amber' },
-        { label: 'Clienți activi', value: '54', context: 'cu proiecte în lucru', icon: 'users', accent: 'indigo' },
-        { label: 'Candidați activi', value: '128', context: 'pipeline curent', icon: 'target', accent: 'violet' }
+        { label: 'Candidați introduși azi', value: `${totals.candidatesIntroducedToday}`, context: 'în ultimele 24h • +8 vs. ieri', icon: 'user-plus', accent: 'magenta' },
+        { label: 'Candidați adăugați', value: `${totals.candidatesAddedThisWeek}`, context: 'în această săptămână • țintă 20', icon: 'user-check', accent: 'teal' },
+        { label: 'Clienți noi', value: `${totals.clientsNewThisWeek}`, context: 'parteneri recent activați • obiectiv 6/săpt.', icon: 'building-2', accent: 'amber' },
+        { label: 'Clienți activi', value: `${totals.clientsActive}`, context: 'cu proiecte în lucru • 14 oferte deschise', icon: 'users', accent: 'indigo' },
+        { label: 'Candidați activi', value: `${totals.candidatesActive}`, context: 'pipeline curent • 31 în interviu', icon: 'target', accent: 'violet' }
       ],
       kpis: [
-        { label: 'Candidați activi', value: '128', delta: '+12% vs. luna trecută' },
-        { label: 'Clienți cu comenzi', value: '17', delta: '5 în faza de ofertă' },
+        { label: 'Candidați activi', value: `${totals.candidatesActive}`, delta: '+12% vs. luna trecută' },
+        { label: 'Clienți activi', value: `${totals.clientsActive}`, delta: '5 în faza de ofertă' },
         { label: 'Timp mediu de plasare', value: '21 zile', delta: '-4 zile față de Q2' },
         { label: 'Fee estimat (Q3)', value: '€242K', delta: '+€36K pipeline probabil' }
       ],
+      clientsActive: totals.clientsActive,
       pipelineStages: [
         { label: 'Propuși', count: 42, description: 'Shortlist trimis către clienți', accent: 'proposed' },
         { label: 'Interviu', count: 31, description: 'Programări confirmate și live', accent: 'interview' },

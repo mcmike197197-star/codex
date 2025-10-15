@@ -206,7 +206,7 @@ img { max-width: 100%; display: block; }
 
 .card .muted,
 .glass-card .muted {
-  color: rgba(71, 77, 110, 0.82);
+  color: rgba(43, 49, 73, 0.88);
 }
 
 .small { font-size: 13px; }
@@ -438,17 +438,24 @@ img { max-width: 100%; display: block; }
 }
 
 .summary-trend {
-  padding: 4px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
   border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
-  background: rgba(34, 197, 94, 0.16);
-  color: #15803d;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.32));
+  color: #065f46;
+  box-shadow: 0 8px 18px rgba(16, 185, 129, 0.2);
 }
 
 .summary-trend.negative {
-  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.4);
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.22), rgba(239, 68, 68, 0.32));
   color: #b91c1c;
+  box-shadow: 0 8px 18px rgba(239, 68, 68, 0.18);
 }
 
 .summary-grid {
@@ -536,7 +543,7 @@ img { max-width: 100%; display: block; }
 
 .summary-context {
   font-size: 12px;
-  color: rgba(71, 77, 110, 0.85);
+  color: rgba(43, 49, 73, 0.86);
 }
 
 .dashboard-duo {
@@ -819,37 +826,47 @@ img { max-width: 100%; display: block; }
 .stat-delta {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 10px;
+  gap: 8px;
+  margin-top: 12px;
   font-size: 13px;
   font-weight: 600;
   border-radius: 999px;
-  padding: 5px 12px;
-  background: rgba(15, 23, 42, 0.08);
-  color: #1f2937;
+  padding: 6px 14px;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  background: rgba(15, 23, 42, 0.1);
+  color: #0f172a;
+  backdrop-filter: blur(6px);
+  letter-spacing: 0.01em;
 }
 
 .stat-delta::before {
   content: '';
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: currentColor;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.6);
 }
 
 .stat-delta.positive {
-  background: rgba(16, 185, 129, 0.18);
-  color: #047857;
+  border-color: rgba(16, 185, 129, 0.5);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.22), rgba(16, 185, 129, 0.35));
+  color: #065f46;
+  box-shadow: 0 10px 24px rgba(16, 185, 129, 0.2);
 }
 
 .stat-delta.negative {
-  background: rgba(248, 113, 113, 0.22);
+  border-color: rgba(239, 68, 68, 0.48);
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.24), rgba(239, 68, 68, 0.34));
   color: #b91c1c;
+  box-shadow: 0 10px 24px rgba(239, 68, 68, 0.18);
 }
 
 .stat-delta.neutral {
-  background: rgba(148, 163, 184, 0.18);
-  color: #334155;
+  border-color: rgba(148, 163, 184, 0.45);
+  background: linear-gradient(135deg, rgba(148, 163, 184, 0.22), rgba(226, 232, 240, 0.32));
+  color: #1f2937;
+  box-shadow: 0 10px 24px rgba(148, 163, 184, 0.18);
 }
 
 .badge {
