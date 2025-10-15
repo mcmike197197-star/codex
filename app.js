@@ -173,23 +173,33 @@
       `;
     }).join('');
 
-    const summary = (data.weeklySnapshot || []).map((item) => `
-      <div class="summary-item">
-        <span class="summary-label">${item.label}</span>
-        <strong>${item.value}</strong>
-        ${item.context ? `<span class="summary-context">${item.context}</span>` : ''}
-      </div>
-    `).join('');
+    const summary = (data.weeklySnapshot || []).map((item) => {
+      const accent = item.accent ? ` summary-icon--${item.accent}` : '';
+      const icon = item.icon ? `<div class="summary-icon${accent}"><i data-lucide="${item.icon}"></i></div>` : '';
+      return `
+        <div class="summary-metric">
+          ${icon || '<div class="summary-icon"></div>'}
+          <div class="summary-body">
+            <span class="summary-label">${item.label}</span>
+            <strong class="summary-value">${item.value}</strong>
+            ${item.context ? `<span class="summary-context">${item.context}</span>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
 
-    const pipeline = (data.pipelineStages || []).map((stage) => `
-      <div class="pipeline-card">
-        <div class="pipeline-count">${stage.count}</div>
-        <div>
-          <span class="pipeline-label">${stage.label}</span>
+    const pipeline = (data.pipelineStages || []).map((stage) => {
+      const accent = stage.accent ? ` pipeline-card--${stage.accent}` : '';
+      return `
+        <div class="pipeline-card${accent}">
+          <div class="pipeline-header">
+            <span class="pipeline-chip">${stage.label}</span>
+            <span class="pipeline-total">${stage.count}</span>
+          </div>
           <p class="pipeline-description">${stage.description}</p>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
     const alerts = (data.alerts || []).map((alert) => `
       <div class="glass-card" style="display:flex;align-items:flex-start;gap:12px;">
@@ -501,11 +511,11 @@
       weeklyHires: 12,
       weeklyTrend: '+3 față de săptămâna trecută',
       weeklySnapshot: [
-        { label: 'Candidați în sistem', value: '26', context: 'introduși în ultimele 24h' },
-        { label: 'Candidați noi (săptămâna)', value: '18', context: 'adăugați în CRM' },
-        { label: 'Clienți noi', value: '4', context: 'parteneri recent activați' },
-        { label: 'Total clienți activi', value: '54', context: 'cu proiecte în lucru' },
-        { label: 'Candidați activi', value: '128', context: 'în pipeline-ul curent' }
+        { label: 'Candidați introduși', value: '26', context: 'în ultimele 24h', icon: 'user-plus', accent: 'magenta' },
+        { label: 'Adăugați în săptămână', value: '18', context: 'candidați noi în CRM', icon: 'user-check', accent: 'teal' },
+        { label: 'Clienți noi', value: '4', context: 'parteneri recent activați', icon: 'building-2', accent: 'amber' },
+        { label: 'Clienți activi', value: '54', context: 'cu proiecte în lucru', icon: 'users', accent: 'indigo' },
+        { label: 'Candidați activi', value: '128', context: 'pipeline curent', icon: 'target', accent: 'violet' }
       ],
       kpis: [
         { label: 'Candidați activi', value: '128', delta: '+12% vs. luna trecută' },
@@ -514,11 +524,11 @@
         { label: 'Fee estimat (Q3)', value: '€242K', delta: '+€36K pipeline probabil' }
       ],
       pipelineStages: [
-        { label: 'Propuși', count: 42, description: 'Shortlist trimis către clienți' },
-        { label: 'Interviu', count: 31, description: 'Programări confirmate și live' },
-        { label: 'Ofertare', count: 14, description: 'Pachete salariale în negociere' },
-        { label: 'Angajați', count: 9, description: 'Contracte semnate & onboarding' },
-        { label: 'Respinsi', count: 23, description: 'Feedback transmis candidaților' }
+        { label: 'Propuși', count: 42, description: 'Shortlist trimis către clienți', accent: 'proposed' },
+        { label: 'Interviu', count: 31, description: 'Programări confirmate și live', accent: 'interview' },
+        { label: 'Ofertare', count: 14, description: 'Pachete salariale în negociere', accent: 'offer' },
+        { label: 'Angajați', count: 9, description: 'Contracte semnate & onboarding', accent: 'hired' },
+        { label: 'Respinsi', count: 23, description: 'Feedback transmis candidaților', accent: 'rejected' }
       ],
       timeline: [
         { id: 'default-1', title: 'Stand-up echipă recrutare', date: formatDate(0), time: '08:30', details: 'Zoom • Moderator: Larisa' },
