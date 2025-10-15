@@ -206,7 +206,8 @@ img { max-width: 100%; display: block; }
 
 .card .muted,
 .glass-card .muted {
-  color: rgba(43, 49, 73, 0.88);
+  color: rgba(32, 38, 66, 0.94);
+  font-weight: 500;
 }
 
 .small { font-size: 13px; }

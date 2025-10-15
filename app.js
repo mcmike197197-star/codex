@@ -560,7 +560,6 @@
         { title: 'Nou client strategic', detail: 'Stratos Management extinde contract pe 2 ani.' },
         { title: 'CSAT candidați', detail: 'Scor 4.7 / 5 pe ultimele 20 feedback-uri.' }
       ],
-      clientsActive: 17,
       openOrders: 24,
       clientSatisfaction: 91,
       internalRequests: 9,
