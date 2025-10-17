@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IWF CRM v9 — Recrutare Globală (UI 2025)</title>
+  <title>IWF CRM v9 — Recrutare Globală (UI 2030)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -40,7 +43,7 @@
         <input id="pwd" type="password" value="demo">
         <div style="display:flex;gap:10px;margin-top:16px;align-items:center">
           <button id="btn-enter" class="btn">Autentificare (demo)</button>
-          <button class="btn" style="background:#444;">Tur demo</button>
+          <button class="btn ghost">Tur demo</button>
         </div>
         <p style="margin-top:12px;font-size:13px;color:#aaa;">
           Acesta este un demo local — nu se trimit date nicăieri.
@@ -66,6 +69,13 @@
   </section>
 
   <!-- === APP === -->
+  <div id="loading-overlay" class="loading hidden">
+    <div class="loading-inner">
+      <div class="spinner"></div>
+      <span>Se încarcă experiența CRM 2030…</span>
+    </div>
+  </div>
+
   <section id="app" class="app hidden">
     <div class="shell">
       <aside class="sidebar">
@@ -91,12 +101,28 @@
 
       <main class="main">
         <div class="topbar">
-          <div class="muted" id="crumb" style="font-weight:800">Panou principal</div>
-          <div class="search">
-            <input id="global-search" placeholder="Căutare… (Enter)" class="input" style="padding:8px 10px;border:1px solid #ddd;border-radius:6px;">
+          <div class="crumb">
+            <span class="crumb-label">Panou principal</span>
+            <span class="crumb-sub">Experiență de recrutare augmentată</span>
+          </div>
+          <div class="top-actions">
+            <div class="search">
+              <i data-lucide="search"></i>
+              <input id="global-search" placeholder="Căutare globală candidați / clienți (Enter)" class="input">
+            </div>
+            <button class="icon-btn" id="btn-quick-add" title="Adaugă rapid candidat" type="button"><i data-lucide="user-plus"></i></button>
+            <button class="icon-btn" id="btn-reminders" title="Reminder-uri" type="button"><i data-lucide="bell"></i></button>
+            <div class="user-pill">
+              <div class="avatar">MD</div>
+              <div class="user-meta">
+                <strong>Manager Demo</strong>
+                <span>Stratos HQ</span>
+              </div>
+              <i data-lucide="chevron-down"></i>
+            </div>
           </div>
         </div>
-        <div id="main-content" class="content" style="padding:20px;">
+        <div id="main-content" class="content">
           <div class="card">
             <h2>Bine ai revenit!</h2>
             <p>Aici vei găsi candidații recent adăugați, clienții activi și cererile noi de recrutare.</p>
@@ -105,27 +131,6 @@
       </main>
     </div>
   </section>
-
-  <!-- === LOGIN LOGIC === -->
-  <script>
-    const login = document.getElementById("login");
-    const app = document.getElementById("app");
-    const btn = document.getElementById("btn-enter");
-
-    btn.addEventListener("click", () => {
-      document.body.classList.remove("login-open");
-      login.style.transition = "opacity .4s ease";
-      login.style.opacity = "0";
-      setTimeout(() => {
-        login.style.display = "none";
-        app.classList.remove("hidden");
-        app.style.opacity = "0";
-        app.style.transition = "opacity .4s ease";
-        setTimeout(() => app.style.opacity = "1", 50);
-        lucide.createIcons();
-      }, 400);
-    });
-  </script>
 
   <!-- === MODULES === -->
   <script src="app.js"></script>
