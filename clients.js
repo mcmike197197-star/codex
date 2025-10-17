@@ -1349,6 +1349,618 @@
     if (window.lucide) { lucide.createIcons(); }
   }
 
+  function exportClient(cl){
+    const rows=[
+      ['Client', 'Industrie', 'Manager', 'Email manager', 'Contact', 'Email contact', 'Telefon contact', 'Locații', 'Proiecte active', 'Valoare pipeline (RON)', 'Propuneri', 'Plasări']
+    ];
+    rows.push([
+      cl.name,
+      cl.industry,
+      cl.owner?.name || '',
+      cl.owner?.email || '',
+      cl.contact?.name || '',
+      cl.contact?.email || '',
+      cl.contact?.phone || '',
+      (cl.locations||[]).map(loc=>`${loc.label} (${loc.city})`).join(' | '),
+      (cl.projects||[]).map(p=>`${p.title} (${p.openings || 0} poziții, ${p.fee})`).join(' | '),
+      sumProjectsValue(cl),
+      cl.proposed?.length || 0,
+      cl.placements?.length || 0
+    ]);
+
+    rows.push([]);
+    rows.push(['Proiecte detaliat']);
+    rows.push(['Titlu','Locație','Tip contract','Poziții','Fee','Valoare (RON)','Status','Data deschidere']);
+    (cl.projects||[]).forEach(p=>{
+      rows.push([
+        p.title,
+        p.location,
+        p.contractType,
+        p.openings,
+        p.fee,
+        p.projectValue,
+        p.status,
+        fmtDate(p.openedAt)
+      ]);
+    });
+
+    const csv = rows.map(r=>r.map(value=>`"${String(value ?? '').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`client_${cl.id}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function editClient(cl){
+    const cityOptions = Object.keys(CITY_COORDS).sort();
+    mainContent.innerHTML=`
+      <div class="card">
+        <button class="btn ghost" id="back_client"><i data-lucide="arrow-left"></i> Înapoi la profil</button>
+      </div>
+      <div class="card">
+        <h2>Editează ${cl.name}</h2>
+        <p class="muted">Actualizează detaliile de bază, contactele și informațiile financiare.</p>
+        <div class="grid-two" style="margin-top:20px;gap:20px;">
+          <div>
+            <label>Nume companie
+              <input id="edit_name" class="input" value="${cl.name}">
+            </label>
+            <label>Domeniu activitate
+              <input id="edit_industry" class="input" value="${cl.industry}">
+            </label>
+            <label>Website companie
+              <input id="edit_website" class="input" value="${cl.website || ''}">
+            </label>
+            <label>Număr angajați
+              <input id="edit_size" class="input" value="${cl.size || ''}">
+            </label>
+            <label>Telefon companie
+              <input id="edit_phone" class="input" value="${cl.phone || ''}">
+            </label>
+            <label>Termene plată
+              <input id="edit_terms" class="input" value="${cl.paymentTerms || ''}">
+            </label>
+            <label>Notițe
+              <textarea id="edit_notes" class="input" rows="3">${cl.notes || ''}</textarea>
+            </label>
+          </div>
+          <div>
+            <label>Țară
+              <input id="edit_country" class="input" value="${cl.country}">
+            </label>
+            <label>Oraș principal
+              <select id="edit_city" class="input">
+                ${cityOptions.map(city=>`<option value="${city}" ${cl.city===city?'selected':''}>${city}</option>`).join('')}
+              </select>
+            </label>
+            <label>Adresă sediu
+              <input id="edit_address" class="input" value="${cl.address || ''}">
+            </label>
+            <label>CUI / VAT
+              <input id="edit_vat" class="input" value="${cl.vat || ''}">
+            </label>
+            <label>Persoană contact
+              <input id="edit_contact_name" class="input" value="${cl.contact?.name || ''}">
+            </label>
+            <label>Rol contact
+              <input id="edit_contact_role" class="input" value="${cl.contact?.role || ''}">
+            </label>
+            <label>Email contact
+              <input id="edit_contact_email" class="input" value="${cl.contact?.email || ''}">
+            </label>
+            <label>Telefon contact
+              <input id="edit_contact_phone" class="input" value="${cl.contact?.phone || ''}">
+            </label>
+          </div>
+        </div>
+        <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;">
+          <button class="btn" id="save_edit"><i data-lucide="save"></i> Salvează</button>
+          <button class="btn ghost" id="cancel_edit"><i data-lucide="x"></i> Anulează</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('back_client').addEventListener('click',()=>openClient(cl.id));
+    document.getElementById('cancel_edit').addEventListener('click',()=>openClient(cl.id));
+    document.getElementById('save_edit').addEventListener('click',()=>{
+      cl.name = document.getElementById('edit_name').value.trim() || cl.name;
+      cl.industry = document.getElementById('edit_industry').value.trim() || cl.industry;
+      cl.website = document.getElementById('edit_website').value.trim();
+      cl.size = document.getElementById('edit_size').value.trim();
+      cl.phone = document.getElementById('edit_phone').value.trim();
+      cl.paymentTerms = document.getElementById('edit_terms').value.trim();
+      cl.notes = document.getElementById('edit_notes').value.trim();
+      cl.country = document.getElementById('edit_country').value.trim() || cl.country;
+      cl.city = document.getElementById('edit_city').value;
+      cl.address = document.getElementById('edit_address').value.trim();
+      cl.vat = document.getElementById('edit_vat').value.trim();
+      cl.contact = {
+        name: document.getElementById('edit_contact_name').value.trim(),
+        role: document.getElementById('edit_contact_role').value.trim(),
+        email: document.getElementById('edit_contact_email').value.trim(),
+        phone: document.getElementById('edit_contact_phone').value.trim()
+      };
+      if(cl.locations && cl.locations[0]){
+        cl.locations[0].city = cl.city;
+        cl.locations[0].address = cl.address;
+        cl.locations[0].label = cl.locations[0].label || `Sediu ${cl.city}`;
+        cl.locations[0].lat = geocode(cl.city).lat;
+        cl.locations[0].lng = geocode(cl.city).lng;
+      }
+      cl.updatedAt = new Date().toISOString();
+      save(STORAGE_KEY, dbClients);
+      alert('Profil client actualizat.');
+      openClient(cl.id);
+    });
+    if (window.lucide) { lucide.createIcons(); }
+  }
+
+  function addLocation(cl){
+    const cityOptions = Object.keys(CITY_COORDS).sort();
+    mainContent.innerHTML=`
+      <div class="card">
+        <button class="btn ghost" id="back_client"><i data-lucide="arrow-left"></i> Înapoi la ${cl.name}</button>
+      </div>
+      <div class="card">
+        <h2>Locație nouă</h2>
+        <p class="muted">Adaugă un punct operațional pentru a-l vedea pe hartă și în filtrele de potrivire candidați.</p>
+        <div class="grid-two" style="margin-top:20px;gap:20px;">
+          <label>Nume locație
+            <input id="loc_label" class="input" placeholder="Ex: Depozit Ploiești">
+          </label>
+          <label>Oraș
+            <select id="loc_city" class="input">
+              ${cityOptions.map(city=>`<option value="${city}">${city}</option>`).join('')}
+            </select>
+          </label>
+          <label>Adresă completă
+            <input id="loc_address" class="input" placeholder="Stradă, număr, județ">
+          </label>
+          <label>Județ
+            <input id="loc_county" class="input" placeholder="Ex: Prahova">
+          </label>
+          <label>Roluri active
+            <input id="loc_roles" class="input" placeholder="Separă prin virgulă">
+          </label>
+        </div>
+        <div style="margin-top:20px;display:flex;gap:12px;">
+          <button class="btn" id="save_location"><i data-lucide="save"></i> Salvează locația</button>
+          <button class="btn ghost" id="cancel_location"><i data-lucide="x"></i> Anulează</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('back_client').addEventListener('click',()=>openClient(cl.id));
+    document.getElementById('cancel_location').addEventListener('click',()=>openClient(cl.id));
+    document.getElementById('save_location').addEventListener('click',()=>{
+      const label = document.getElementById('loc_label').value.trim();
+      const city = document.getElementById('loc_city').value;
+      const address = document.getElementById('loc_address').value.trim();
+      if(!label || !city || !address){
+        alert('Completează numele, orașul și adresa locației.');
+        return;
+      }
+      const coords = geocode(city);
+      cl.locations = cl.locations || [];
+      cl.locations.push({
+        id: 'loc-'+shortId(),
+        label,
+        address,
+        city,
+        county: document.getElementById('loc_county').value.trim(),
+        lat: coords.lat,
+        lng: coords.lng,
+        activeRoles: document.getElementById('loc_roles').value.split(',').map(x=>x.trim()).filter(Boolean)
+      });
+      cl.updatedAt = new Date().toISOString();
+      save(STORAGE_KEY, dbClients);
+      alert('Locație adăugată.');
+      openClient(cl.id);
+    });
+    if (window.lucide) { lucide.createIcons(); }
+  }
+
+  function addProject(cl){
+    if(!cl.locations?.length){
+      alert('Adaugă mai întâi o locație pentru a crea proiecte asociate.');
+      return;
+    }
+    mainContent.innerHTML=`
+      <div class="card">
+        <button class="btn ghost" id="back_client"><i data-lucide="arrow-left"></i> Înapoi la ${cl.name}</button>
+      </div>
+      <div class="card">
+        <h2>Proiect nou pentru ${cl.name}</h2>
+        <p class="muted">Definește rolul, taxa și locația pentru noul proiect în pipeline.</p>
+        <div class="grid-two" style="margin-top:20px;gap:20px;">
+          <label>Rol / Titlu poziție
+            <input id="proj_title" class="input" placeholder="Ex: Inginer service">
+          </label>
+          <label>Locație proiect
+            <select id="proj_location" class="input">
+              ${cl.locations.map(loc=>`<option value="${loc.id}">${loc.label} (${loc.city})</option>`).join('')}
+            </select>
+          </label>
+          <label>Număr poziții
+            <input id="proj_openings" class="input" type="number" min="1" value="1">
+          </label>
+          <label>Fee (%)
+            <input id="proj_fee" class="input" placeholder="Ex: 18%">
+          </label>
+          <label>Valoare proiect (RON)
+            <input id="proj_value" class="input" type="number" min="0" step="1000" placeholder="Ex: 45000">
+          </label>
+          <label>Tip contract
+            <input id="proj_contract" class="input" placeholder="Ex: Permanent">
+          </label>
+          <label>Status
+            <select id="proj_status" class="input">
+              <option>Deschis</option>
+              <option>Interviu</option>
+              <option>Ofertă</option>
+              <option>Angajat</option>
+              <option>Închis</option>
+            </select>
+          </label>
+          <label>Tag-uri
+            <input id="proj_tags" class="input" placeholder="Separă cu virgulă (ex: Logistică, Senior)">
+          </label>
+        </div>
+        <label style="display:block;margin-top:18px;">Detalii suplimentare
+          <textarea id="proj_notes" class="input" rows="3" placeholder="Context rol, cerințe, beneficii"></textarea>
+        </label>
+        <div style="margin-top:20px;display:flex;gap:12px;">
+          <button class="btn" id="save_project"><i data-lucide="save"></i> Salvează proiect</button>
+          <button class="btn ghost" id="cancel_project"><i data-lucide="x"></i> Anulează</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('back_client').addEventListener('click',()=>openClient(cl.id));
+    document.getElementById('cancel_project').addEventListener('click',()=>openClient(cl.id));
+    document.getElementById('save_project').addEventListener('click',()=>{
+      const title = document.getElementById('proj_title').value.trim();
+      const locationId = document.getElementById('proj_location').value;
+      if(!title || !locationId){
+        alert('Completează titlul rolului și selectează o locație.');
+        return;
+      }
+      const openings = parseInt(document.getElementById('proj_openings').value,10) || 1;
+      const fee = document.getElementById('proj_fee').value.trim() || '15%';
+      const value = parseFloat(document.getElementById('proj_value').value) || 0;
+      const location = cl.locations.find(l=>l.id===locationId);
+      const project = {
+        id: 'proj-'+shortId(),
+        title,
+        locationId,
+        location: location?.label || '',
+        openings,
+        fee,
+        projectValue: value,
+        contractType: document.getElementById('proj_contract').value.trim() || 'Permanent',
+        status: document.getElementById('proj_status').value,
+        openedAt: new Date().toISOString(),
+        tags: document.getElementById('proj_tags').value.split(',').map(x=>x.trim()).filter(Boolean),
+        notes: document.getElementById('proj_notes').value.trim()
+      };
+      cl.projects = cl.projects || [];
+      cl.projects.unshift(project);
+      cl.updatedAt = new Date().toISOString();
+      save(STORAGE_KEY, dbClients);
+      alert('Proiect adăugat în pipeline.');
+      openClient(cl.id);
+    });
+    if (window.lucide) { lucide.createIcons(); }
+  }
+
+  function exportClient(cl){
+    const rows=[
+      ['Client', 'Industrie', 'Manager', 'Email manager', 'Contact', 'Email contact', 'Telefon contact', 'Locații', 'Proiecte active', 'Valoare pipeline (RON)', 'Propuneri', 'Plasări']
+    ];
+    rows.push([
+      cl.name,
+      cl.industry,
+      cl.owner?.name || '',
+      cl.owner?.email || '',
+      cl.contact?.name || '',
+      cl.contact?.email || '',
+      cl.contact?.phone || '',
+      (cl.locations||[]).map(loc=>`${loc.label} (${loc.city})`).join(' | '),
+      (cl.projects||[]).map(p=>`${p.title} (${p.openings || 0} poziții, ${p.fee})`).join(' | '),
+      sumProjectsValue(cl),
+      cl.proposed?.length || 0,
+      cl.placements?.length || 0
+    ]);
+
+    rows.push([]);
+    rows.push(['Proiecte detaliat']);
+    rows.push(['Titlu','Locație','Tip contract','Poziții','Fee','Valoare (RON)','Status','Data deschidere']);
+    (cl.projects||[]).forEach(p=>{
+      rows.push([
+        p.title,
+        p.location,
+        p.contractType,
+        p.openings,
+        p.fee,
+        p.projectValue,
+        p.status,
+        fmtDate(p.openedAt)
+      ]);
+    });
+
+    const csv = rows.map(r=>r.map(value=>`"${String(value ?? '').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`client_${cl.id}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function editClient(cl){
+    const cityOptions = Object.keys(CITY_COORDS).sort();
+    mainContent.innerHTML=`
+      <div class="card">
+        <button class="btn ghost" id="back_client"><i data-lucide="arrow-left"></i> Înapoi la profil</button>
+      </div>
+      <div class="card">
+        <h2>Editează ${cl.name}</h2>
+        <p class="muted">Actualizează detaliile de bază, contactele și informațiile financiare.</p>
+        <div class="grid-two" style="margin-top:20px;gap:20px;">
+          <div>
+            <label>Nume companie
+              <input id="edit_name" class="input" value="${cl.name}">
+            </label>
+            <label>Domeniu activitate
+              <input id="edit_industry" class="input" value="${cl.industry}">
+            </label>
+            <label>Website companie
+              <input id="edit_website" class="input" value="${cl.website || ''}">
+            </label>
+            <label>Număr angajați
+              <input id="edit_size" class="input" value="${cl.size || ''}">
+            </label>
+            <label>Telefon companie
+              <input id="edit_phone" class="input" value="${cl.phone || ''}">
+            </label>
+            <label>Termene plată
+              <input id="edit_terms" class="input" value="${cl.paymentTerms || ''}">
+            </label>
+            <label>Notițe
+              <textarea id="edit_notes" class="input" rows="3">${cl.notes || ''}</textarea>
+            </label>
+          </div>
+          <div>
+            <label>Țară
+              <input id="edit_country" class="input" value="${cl.country}">
+            </label>
+            <label>Oraș principal
+              <select id="edit_city" class="input">
+                ${cityOptions.map(city=>`<option value="${city}" ${cl.city===city?'selected':''}>${city}</option>`).join('')}
+              </select>
+            </label>
+            <label>Adresă sediu
+              <input id="edit_address" class="input" value="${cl.address || ''}">
+            </label>
+            <label>CUI / VAT
+              <input id="edit_vat" class="input" value="${cl.vat || ''}">
+            </label>
+            <label>Persoană contact
+              <input id="edit_contact_name" class="input" value="${cl.contact?.name || ''}">
+            </label>
+            <label>Rol contact
+              <input id="edit_contact_role" class="input" value="${cl.contact?.role || ''}">
+            </label>
+            <label>Email contact
+              <input id="edit_contact_email" class="input" value="${cl.contact?.email || ''}">
+            </label>
+            <label>Telefon contact
+              <input id="edit_contact_phone" class="input" value="${cl.contact?.phone || ''}">
+            </label>
+          </div>
+        </div>
+        <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;">
+          <button class="btn" id="save_edit"><i data-lucide="save"></i> Salvează</button>
+          <button class="btn ghost" id="cancel_edit"><i data-lucide="x"></i> Anulează</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('back_client').addEventListener('click',()=>openClient(cl.id));
+    document.getElementById('cancel_edit').addEventListener('click',()=>openClient(cl.id));
+    document.getElementById('save_edit').addEventListener('click',()=>{
+      cl.name = document.getElementById('edit_name').value.trim() || cl.name;
+      cl.industry = document.getElementById('edit_industry').value.trim() || cl.industry;
+      cl.website = document.getElementById('edit_website').value.trim();
+      cl.size = document.getElementById('edit_size').value.trim();
+      cl.phone = document.getElementById('edit_phone').value.trim();
+      cl.paymentTerms = document.getElementById('edit_terms').value.trim();
+      cl.notes = document.getElementById('edit_notes').value.trim();
+      cl.country = document.getElementById('edit_country').value.trim() || cl.country;
+      cl.city = document.getElementById('edit_city').value;
+      cl.address = document.getElementById('edit_address').value.trim();
+      cl.vat = document.getElementById('edit_vat').value.trim();
+      cl.contact = {
+        name: document.getElementById('edit_contact_name').value.trim(),
+        role: document.getElementById('edit_contact_role').value.trim(),
+        email: document.getElementById('edit_contact_email').value.trim(),
+        phone: document.getElementById('edit_contact_phone').value.trim()
+      };
+      if(cl.locations && cl.locations[0]){
+        cl.locations[0].city = cl.city;
+        cl.locations[0].address = cl.address;
+        cl.locations[0].label = cl.locations[0].label || `Sediu ${cl.city}`;
+        cl.locations[0].lat = geocode(cl.city).lat;
+        cl.locations[0].lng = geocode(cl.city).lng;
+      }
+      cl.updatedAt = new Date().toISOString();
+      save(STORAGE_KEY, dbClients);
+      alert('Profil client actualizat.');
+      openClient(cl.id);
+    });
+    if (window.lucide) { lucide.createIcons(); }
+  }
+
+  function addLocation(cl){
+    const cityOptions = Object.keys(CITY_COORDS).sort();
+    mainContent.innerHTML=`
+      <div class="card">
+        <button class="btn ghost" id="back_client"><i data-lucide="arrow-left"></i> Înapoi la ${cl.name}</button>
+      </div>
+      <div class="card">
+        <h2>Locație nouă</h2>
+        <p class="muted">Adaugă un punct operațional pentru a-l vedea pe hartă și în filtrele de potrivire candidați.</p>
+        <div class="grid-two" style="margin-top:20px;gap:20px;">
+          <label>Nume locație
+            <input id="loc_label" class="input" placeholder="Ex: Depozit Ploiești">
+          </label>
+          <label>Oraș
+            <select id="loc_city" class="input">
+              ${cityOptions.map(city=>`<option value="${city}">${city}</option>`).join('')}
+            </select>
+          </label>
+          <label>Adresă completă
+            <input id="loc_address" class="input" placeholder="Stradă, număr, județ">
+          </label>
+          <label>Județ
+            <input id="loc_county" class="input" placeholder="Ex: Prahova">
+          </label>
+          <label>Roluri active
+            <input id="loc_roles" class="input" placeholder="Separă prin virgulă">
+          </label>
+        </div>
+        <div style="margin-top:20px;display:flex;gap:12px;">
+          <button class="btn" id="save_location"><i data-lucide="save"></i> Salvează locația</button>
+          <button class="btn ghost" id="cancel_location"><i data-lucide="x"></i> Anulează</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('back_client').addEventListener('click',()=>openClient(cl.id));
+    document.getElementById('cancel_location').addEventListener('click',()=>openClient(cl.id));
+    document.getElementById('save_location').addEventListener('click',()=>{
+      const label = document.getElementById('loc_label').value.trim();
+      const city = document.getElementById('loc_city').value;
+      const address = document.getElementById('loc_address').value.trim();
+      if(!label || !city || !address){
+        alert('Completează numele, orașul și adresa locației.');
+        return;
+      }
+      const coords = geocode(city);
+      cl.locations = cl.locations || [];
+      cl.locations.push({
+        id: 'loc-'+shortId(),
+        label,
+        address,
+        city,
+        county: document.getElementById('loc_county').value.trim(),
+        lat: coords.lat,
+        lng: coords.lng,
+        activeRoles: document.getElementById('loc_roles').value.split(',').map(x=>x.trim()).filter(Boolean)
+      });
+      cl.updatedAt = new Date().toISOString();
+      save(STORAGE_KEY, dbClients);
+      alert('Locație adăugată.');
+      openClient(cl.id);
+    });
+    if (window.lucide) { lucide.createIcons(); }
+  }
+
+  function addProject(cl){
+    if(!cl.locations?.length){
+      alert('Adaugă mai întâi o locație pentru a crea proiecte asociate.');
+      return;
+    }
+    mainContent.innerHTML=`
+      <div class="card">
+        <button class="btn ghost" id="back_client"><i data-lucide="arrow-left"></i> Înapoi la ${cl.name}</button>
+      </div>
+      <div class="card">
+        <h2>Proiect nou pentru ${cl.name}</h2>
+        <p class="muted">Definește rolul, taxa și locația pentru noul proiect în pipeline.</p>
+        <div class="grid-two" style="margin-top:20px;gap:20px;">
+          <label>Rol / Titlu poziție
+            <input id="proj_title" class="input" placeholder="Ex: Inginer service">
+          </label>
+          <label>Locație proiect
+            <select id="proj_location" class="input">
+              ${cl.locations.map(loc=>`<option value="${loc.id}">${loc.label} (${loc.city})</option>`).join('')}
+            </select>
+          </label>
+          <label>Număr poziții
+            <input id="proj_openings" class="input" type="number" min="1" value="1">
+          </label>
+          <label>Fee (%)
+            <input id="proj_fee" class="input" placeholder="Ex: 18%">
+          </label>
+          <label>Valoare proiect (RON)
+            <input id="proj_value" class="input" type="number" min="0" step="1000" placeholder="Ex: 45000">
+          </label>
+          <label>Tip contract
+            <input id="proj_contract" class="input" placeholder="Ex: Permanent">
+          </label>
+          <label>Status
+            <select id="proj_status" class="input">
+              <option>Deschis</option>
+              <option>Interviu</option>
+              <option>Ofertă</option>
+              <option>Angajat</option>
+              <option>Închis</option>
+            </select>
+          </label>
+          <label>Tag-uri
+            <input id="proj_tags" class="input" placeholder="Separă cu virgulă (ex: Logistică, Senior)">
+          </label>
+        </div>
+        <label style="display:block;margin-top:18px;">Detalii suplimentare
+          <textarea id="proj_notes" class="input" rows="3" placeholder="Context rol, cerințe, beneficii"></textarea>
+        </label>
+        <div style="margin-top:20px;display:flex;gap:12px;">
+          <button class="btn" id="save_project"><i data-lucide="save"></i> Salvează proiect</button>
+          <button class="btn ghost" id="cancel_project"><i data-lucide="x"></i> Anulează</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('back_client').addEventListener('click',()=>openClient(cl.id));
+    document.getElementById('cancel_project').addEventListener('click',()=>openClient(cl.id));
+    document.getElementById('save_project').addEventListener('click',()=>{
+      const title = document.getElementById('proj_title').value.trim();
+      const locationId = document.getElementById('proj_location').value;
+      if(!title || !locationId){
+        alert('Completează titlul rolului și selectează o locație.');
+        return;
+      }
+      const openings = parseInt(document.getElementById('proj_openings').value,10) || 1;
+      const fee = document.getElementById('proj_fee').value.trim() || '15%';
+      const value = parseFloat(document.getElementById('proj_value').value) || 0;
+      const location = cl.locations.find(l=>l.id===locationId);
+      const project = {
+        id: 'proj-'+shortId(),
+        title,
+        locationId,
+        location: location?.label || '',
+        openings,
+        fee,
+        projectValue: value,
+        contractType: document.getElementById('proj_contract').value.trim() || 'Permanent',
+        status: document.getElementById('proj_status').value,
+        openedAt: new Date().toISOString(),
+        tags: document.getElementById('proj_tags').value.split(',').map(x=>x.trim()).filter(Boolean),
+        notes: document.getElementById('proj_notes').value.trim()
+      };
+      cl.projects = cl.projects || [];
+      cl.projects.unshift(project);
+      cl.updatedAt = new Date().toISOString();
+      save(STORAGE_KEY, dbClients);
+      alert('Proiect adăugat în pipeline.');
+      openClient(cl.id);
+    });
+    if (window.lucide) { lucide.createIcons(); }
+  }
+
   // ---------- Add proposed candidate ----------
   function addProposed(cl){
     if(!dbCandidates.length){
