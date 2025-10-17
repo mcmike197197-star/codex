@@ -57,6 +57,24 @@
     }
   };
 
+  const MODULE_BOOTSTRAP = {
+    candidates: () => {
+      if (window.IWF_CANDIDATES?.openList) {
+        window.IWF_CANDIDATES.openList();
+      }
+    },
+    clients: () => {
+      if (window.IWF_CLIENTS?.openList) {
+        window.IWF_CLIENTS.openList();
+      }
+    },
+    orders: () => {
+      if (window.IWF_ORDERS?.openList) {
+        window.IWF_ORDERS.openList();
+      }
+    }
+  };
+
   // --- Login orchestration ---
   btnEnter?.addEventListener('click', () => {
     overlay.classList.remove('hidden');
@@ -143,6 +161,7 @@
 
     lucide.createIcons();
     document.dispatchEvent(new CustomEvent('iwf:view-change', { detail: { view } }));
+    MODULE_BOOTSTRAP[view]?.();
   }
 
   function renderPlaceholder(message) {
