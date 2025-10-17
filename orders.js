@@ -35,13 +35,38 @@
 
   // ---------- Main list ----------
   function renderList(){
+    const totalOrders = dbOrders.length;
+    const totalTargets = dbOrders.reduce((acc,o)=>acc+(o.targetHires||0),0);
+    const totalFilled = dbOrders.reduce((acc,o)=>acc+(o.filledCount||0),0);
+    const progressGlobal = totalTargets ? Math.round((totalFilled/totalTargets)*100) : 0;
+
     mainContent.innerHTML=`
       <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-          <h2 style="margin:0">Comenzi de recrutare</h2>
-          <button class="btn" id="add_order">Adaugă comandă</button>
+        <div class="flex-between" style="flex-wrap:wrap;gap:14px;">
+          <div>
+            <h2 style="margin:0;">Comenzi de recrutare</h2>
+            <p class="muted" style="margin:6px 0 0;">Monitorizare SLA, progres și priorități</p>
+          </div>
+          <button class="btn" id="add_order"><i data-lucide="plus-square"></i> Comandă nouă</button>
         </div>
-        <div style="margin-top:10px;overflow:auto">
+        <div class="stats-grid" style="margin-top:18px;">
+          <div class="stat-card">
+            <span>Comenzi active</span>
+            <strong>${totalOrders}</strong>
+            <small class="muted">${totalTargets} poziții în total</small>
+          </div>
+          <div class="stat-card">
+            <span>Posturi ocupate</span>
+            <strong>${totalFilled}</strong>
+            <small class="muted">Progres global ${progressGlobal}%</small>
+          </div>
+          <div class="stat-card">
+            <span>Prioritate ridicată</span>
+            <strong>${dbOrders.filter(o=>o.priority==='Ridicată').length}</strong>
+            <small class="muted">Necesită follow-up zilnic</small>
+          </div>
+        </div>
+        <div class="table-responsive" style="margin-top:22px;">
           <table>
             <thead>
               <tr><th>ID</th><th>Client</th><th>Titlu</th><th>Locație</th><th>Posturi</th><th>Status</th><th>Progres</th><th></th></tr>
@@ -59,11 +84,9 @@
                     <td>${o.filledCount}/${o.targetHires}</td>
                     <td>${o.status}</td>
                     <td>
-                      <div style="height:8px;border-radius:999px;background:#eee;overflow:hidden">
-                        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#a62091,#f59e0b,#22c55e)"></div>
-                      </div>
+                      <div class="progress-line"><span style="width:${pct}%"></span></div>
                     </td>
-                    <td><button class="btn" data-open="${o.id}">Deschide</button></td>
+                    <td><button class="btn ghost" data-open="${o.id}">Deschide</button></td>
                   </tr>
                 `;
               }).join('')}
@@ -76,6 +99,7 @@
       b.addEventListener('click',()=>openOrder(b.dataset.open));
     });
     document.getElementById('add_order').addEventListener('click',createOrder);
+    if (window.lucide) { lucide.createIcons(); }
   }
 
   // ---------- Create order ----------
@@ -84,7 +108,8 @@
     mainContent.innerHTML=`
       <div class="card">
         <h2>Comandă nouă</h2>
-        <div style="display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:10px">
+        <p class="muted">Completează parametrii principali pentru a crea o nouă solicitare de recrutare.</p>
+        <div class="grid-two" style="margin-top:16px;">
           <label>Client<select id="ord_client" class="input">${opts}</select></label>
           <label>Titlu poziție<input id="ord_title" class="input"></label>
           <label>Locație<input id="ord_loc" class="input" value="România"></label>
@@ -92,7 +117,10 @@
           <label>Prioritate<select id="ord_prio" class="input"><option>Ridicată</option><option>Medie</option><option>Scăzută</option></select></label>
           <label>Status<select id="ord_status" class="input"><option>Deschisă</option><option>Interviu</option><option>Ofertă transmisă</option><option>Completă</option></select></label>
         </div>
-        <div style="margin-top:12px"><button class="btn" id="save_order">Salvează</button> <button class="btn" id="back">Înapoi</button></div>
+        <div style="margin-top:18px;display:flex;gap:12px;">
+          <button class="btn" id="save_order">Salvează</button>
+          <button class="btn ghost" id="back">Înapoi</button>
+        </div>
       </div>
     `;
     document.getElementById('back').addEventListener('click',renderList);
@@ -113,6 +141,7 @@
       alert('Comandă creată');
       renderList();
     });
+    if (window.lucide) { lucide.createIcons(); }
   }
 
   // ---------- Open order ----------
@@ -122,18 +151,25 @@
     const client=dbClients.find(c=>c.id===o.clientId);
     mainContent.innerHTML=`
       <div class="card">
-        <button class="btn" id="back_list">⟵ Înapoi la comenzi</button>
+        <button class="btn ghost" id="back_list">⟵ Înapoi la comenzi</button>
       </div>
 
-      <div class="card">
-        <h2>${o.title}</h2>
-        <p class="muted">${client?.name || '—'} • ${o.location}</p>
-        <p>Status: <strong>${o.status}</strong> • Prioritate: <strong>${o.priority}</strong></p>
-        <p>Posturi: ${o.filledCount}/${o.targetHires}</p>
-        <div style="height:8px;border-radius:999px;background:#eee;overflow:hidden">
-          <div style="height:100%;width:${Math.round((o.filledCount/o.targetHires)*100)}%;background:linear-gradient(90deg,#a62091,#f59e0b,#22c55e)"></div>
+      <div class="card" style="display:grid;grid-template-columns:2fr 1fr;gap:24px;">
+        <div>
+          <h2 style="margin-top:0;">${o.title}</h2>
+          <p class="muted">${client?.name || '—'} • ${o.location}</p>
+          <p>Status: <strong>${o.status}</strong> • Prioritate: <strong>${o.priority}</strong></p>
+          <p>Posturi: ${o.filledCount}/${o.targetHires}</p>
+          <div class="progress-line" style="margin-top:10px;"><span style="width:${Math.round((o.filledCount/o.targetHires)*100)}%"></span></div>
+          <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap;">
+            <button class="btn" id="add_cand"><i data-lucide="user-plus"></i> Asociază candidat</button>
+            <button class="btn ghost" id="order_export"><i data-lucide="download"></i> Exportă detalii</button>
+          </div>
         </div>
-        <div style="margin-top:12px"><button class="btn" id="add_cand">Asociază candidat</button></div>
+        <div class="glass-card">
+          <h3 style="margin-top:0;">Rezumat</h3>
+          <p class="muted" style="margin:0;">SLA client: 3 candidați / săptămână. Următorul checkpoint: ${new Date().toLocaleDateString('ro-RO')}.</p>
+        </div>
       </div>
 
       <div class="card">
@@ -143,6 +179,17 @@
     `;
     document.getElementById('back_list').addEventListener('click',renderList);
     document.getElementById('add_cand').addEventListener('click',()=>associateCandidate(o));
+    document.getElementById('order_export').addEventListener('click',()=>{
+      const rows = ['id,client,titlu,status,progres'];
+      rows.push(`${o.id},${client?.name || '—'},${o.title},${o.status},${Math.round((o.filledCount/o.targetHires)*100)}%`);
+      const txt = rows.join('\n');
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(new Blob([txt],{type:'text/csv;charset=utf-8;'}));
+      a.download=`order_${o.id}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+    if (window.lucide) { lucide.createIcons(); }
   }
 
   function renderAssoc(o){
@@ -151,7 +198,7 @@
       const c=dbCandidates.find(x=>x.id===cid);
       if(!c) return '';
       return `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee">
+        <div class="glass-card" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
           <div><strong>${c.firstName} ${c.lastName}</strong><div class="muted" style="font-size:12px">${c.title}</div></div>
           <span class="badge success">Asociat</span>
         </div>
@@ -188,6 +235,7 @@
       alert('Candidat asociat');
       openOrder(o.id);
     });
+    if (window.lucide) { lucide.createIcons(); }
   }
 
   document.addEventListener('DOMContentLoaded',()=>{
