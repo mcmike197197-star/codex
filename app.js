@@ -59,21 +59,49 @@
 
   const MODULE_BOOTSTRAP = {
     candidates: () => {
-      if (window.IWF_CANDIDATES?.openList) {
+      if (typeof window.IWF_CANDIDATES?.openList === 'function') {
         window.IWF_CANDIDATES.openList();
+        return true;
       }
+      return false;
     },
     clients: () => {
-      if (window.IWF_CLIENTS?.openList) {
+      if (typeof window.IWF_CLIENTS?.openList === 'function') {
         window.IWF_CLIENTS.openList();
+        return true;
       }
+      return false;
     },
     orders: () => {
-      if (window.IWF_ORDERS?.openList) {
+      if (typeof window.IWF_ORDERS?.openList === 'function') {
         window.IWF_ORDERS.openList();
+        return true;
       }
+      return false;
     }
   };
+
+  function attemptModuleBootstrap(view, attempt = 0) {
+    const bootstrap = MODULE_BOOTSTRAP[view];
+    if (!bootstrap) return;
+
+    try {
+      const executed = bootstrap();
+      if (executed !== false) {
+        return;
+      }
+    } catch (err) {
+      console.error(`Eroare inițializare modul ${view}:`, err);
+      if (attempt >= 6) {
+        return;
+      }
+    }
+
+    if (attempt < 6) {
+      const delay = Math.min(500, 80 * (attempt + 1));
+      setTimeout(() => attemptModuleBootstrap(view, attempt + 1), delay);
+    }
+  }
 
   // --- Login orchestration ---
   btnEnter?.addEventListener('click', () => {
@@ -152,16 +180,23 @@
     const meta = VIEW_META[view] || VIEW_META.dashboard;
     navButtons().forEach((btn) => btn.classList.toggle('active', btn.dataset.view === view));
 
+    window.IWF_VIEW = window.IWF_VIEW || {};
+    window.IWF_VIEW.previous = window.IWF_VIEW.current || null;
+    window.IWF_VIEW.current = view;
+    window.IWF_VIEW.updatedAt = Date.now();
+
     crumbLabel.textContent = meta.title;
     crumbSub.textContent = meta.tagline;
 
     mainContent.classList.add('fade-in');
+    mainContent.dataset.view = view;
+    document.body.dataset.view = view;
     mainContent.innerHTML = meta.render();
     requestAnimationFrame(() => mainContent.classList.remove('fade-in'));
 
     lucide.createIcons();
     document.dispatchEvent(new CustomEvent('iwf:view-change', { detail: { view } }));
-    MODULE_BOOTSTRAP[view]?.();
+    attemptModuleBootstrap(view);
   }
 
   function renderPlaceholder(message) {
